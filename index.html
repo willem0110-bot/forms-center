@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.5 | 星安 Design System -->
+<!-- fc-frontend v1.5.1 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -615,9 +615,10 @@ body.manage-mode .manage-box{display:block}
  * 星安表格中心 前端 v1.5
  * 新增：照片燈箱放大、清冊列點擊編輯/刪除、狀態變更
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.5';
+var FRONTEND_VERSION = 'v1.5.1';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
+var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
 var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
 
 var state = {
@@ -1335,6 +1336,7 @@ function bumpActivity() { state.lastActivity = Date.now(); }
 });
 
 function startIdleWatch() {
+  if (!IDLE_ENABLED) return; // 閒置登出目前停用
   bumpActivity();
   setInterval(checkIdle, 30 * 1000);
   document.addEventListener('visibilitychange', function () {
