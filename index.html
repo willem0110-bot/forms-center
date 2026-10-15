@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.3 | 星安 Design System -->
+<!-- fc-frontend v1.4 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -227,8 +227,19 @@ body.manage-mode .manage-box{display:block}
 /* ===== 財產清冊列表 ===== */
 .asset-row{
   padding:12px 4px;border-bottom:1px dashed var(--line);
+  display:flex;gap:12px;align-items:flex-start;
 }
 .asset-row:last-child{border-bottom:none}
+.asset-thumb{
+  width:56px;height:56px;border-radius:12px;object-fit:cover;flex-shrink:0;
+  border:1px solid var(--line);background:var(--bg);
+}
+.asset-thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--idle);font-size:20px}
+.asset-main{flex:1;min-width:0}
+#as-photo-preview{
+  display:none;width:100%;max-height:220px;object-fit:contain;
+  border-radius:12px;border:1px solid var(--line);margin-top:10px;background:var(--bg);
+}
 .asset-row .l1{display:flex;align-items:baseline;gap:8px}
 .asset-row .ano{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-soft)}
 .asset-row .aname{font-weight:700;font-size:15px;flex:1}
@@ -547,6 +558,13 @@ body.manage-mode .manage-box{display:block}
       <label>備註<span class="hint">選填</span></label>
       <textarea id="as-note" placeholder="其他補充說明"></textarea>
     </div>
+    <div class="field">
+      <label>照片<span class="hint">選填・含安全標章，會存入園長雲端硬碟</span></label>
+      <input type="file" id="as-photo" accept="image/*" style="display:none" onchange="onAssetPhoto(this)">
+      <button type="button" class="secondary-btn" style="margin-top:0" onclick="document.getElementById('as-photo').click()">📷 拍照／選擇照片</button>
+      <img id="as-photo-preview" alt="財產照片預覽">
+      <button type="button" class="secondary-btn" id="as-photo-clear" style="display:none" onclick="clearAssetPhoto()">✕ 移除照片</button>
+    </div>
     <button class="submit-btn" onclick="submitAsset()">登記財產</button>
   </div>
 
@@ -570,10 +588,10 @@ body.manage-mode .manage-box{display:block}
 
 <script>
 /* ============================================================
- * 星安表格中心 前端 v1.3
- * 新增：財產清冊（登記＋瀏覽搜尋，資料源 Assets 分頁）
+ * 星安表格中心 前端 v1.4
+ * 新增：財產照片（拍照上傳雲端硬碟、清冊縮圖）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.3';
+var FRONTEND_VERSION = 'v1.4';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
@@ -587,7 +605,7 @@ var state = {
   items: [],
   fridgeDept: '', fridgeSite: '', freezerKey: '', fridgeKey: '',
   cleanDept: '', selectedClass: '',
-  assetCats: [], assetCat: '', assetFilter: '全部', assets: null,
+  assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '',
   lastActivity: Date.now()
 };
 
@@ -994,6 +1012,41 @@ function renderAssetForm() {
   });
 }
 
+function onAssetPhoto(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      var MAX = 1280;
+      var w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        var r = Math.min(MAX / w, MAX / h);
+        w = Math.round(w * r); h = Math.round(h * r);
+      }
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      var dataUrl = cv.toDataURL('image/jpeg', 0.82);
+      state.assetPhoto = dataUrl.split(',')[1]; // 純 base64
+      var pv = document.getElementById('as-photo-preview');
+      pv.src = dataUrl; pv.style.display = 'block';
+      document.getElementById('as-photo-clear').style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAssetPhoto() {
+  state.assetPhoto = '';
+  document.getElementById('as-photo').value = '';
+  var pv = document.getElementById('as-photo-preview');
+  pv.src = ''; pv.style.display = 'none';
+  document.getElementById('as-photo-clear').style.display = 'none';
+}
+
 function switchAssetTab(tab) {
   document.getElementById('asset-tab-add').classList.toggle('active', tab === 'add');
   document.getElementById('asset-tab-list').classList.toggle('active', tab === 'list');
@@ -1019,11 +1072,13 @@ async function submitAsset() {
       date: fromInputDate(document.getElementById('as-date').value),
       life: document.getElementById('as-life').value,
       keeper: document.getElementById('as-keeper').value.trim(),
-      note: document.getElementById('as-note').value.trim()
+      note: document.getElementById('as-note').value.trim(),
+      photo: state.assetPhoto
     });
     busy(false);
     if (!res.ok) { toast(res.message || '登記失敗', true); return; }
-    toast('✅ 已登記 ' + res.no + '・' + name + (res.total !== '' ? '（總價 NT$' + Number(res.total).toLocaleString() + '）' : ''));
+    toast('✅ 已登記 ' + res.no + '・' + name + (res.hasPhoto ? '（含照片）' : '') + (res.total !== '' ? '・總價 NT$' + Number(res.total).toLocaleString() : ''));
+    clearAssetPhoto();
     ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-note'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
@@ -1092,11 +1147,17 @@ function renderAssetList() {
     if (a.total !== '') meta.push('NT$ ' + a.total);
     if (a.date) meta.push(a.date);
     if (a.brand) meta.push(a.brand);
-    row.innerHTML =
+    var thumb = a.photo
+      ? '<a href="https://drive.google.com/file/d/' + esc(a.photo) + '/view" target="_blank" rel="noopener">' +
+        '<img class="asset-thumb" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(a.photo) + '&sz=w120" alt=""></a>'
+      : '<div class="asset-thumb ph">📷</div>';
+    row.innerHTML = thumb +
+      '<div class="asset-main">' +
       '<div class="l1"><span class="ano">' + esc(a.no) + '</span>' +
       '<span class="aname">' + esc(a.name) + '</span>' +
       '<span class="astatus ' + statusClass(a.status) + '">' + esc(a.status || '使用中') + '</span></div>' +
-      '<div class="l2">' + esc(meta.join('・')) + (a.note ? '<br>備註：' + esc(a.note) : '') + '</div>';
+      '<div class="l2">' + esc(meta.join('・')) + (a.note ? '<br>備註：' + esc(a.note) : '') + '</div>' +
+      '</div>';
     wrap.appendChild(row);
   });
 }
