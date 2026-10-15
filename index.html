@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.1-design | 星安 Design System -->
+<!-- fc-frontend v1.2 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -156,13 +156,25 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-c
   width:100%;background:var(--card);color:var(--ink);border:1px solid var(--line);
   border-radius:var(--radius-pill);padding:12px;font-size:14px;cursor:pointer;margin-top:10px;font-family:var(--font-body);
 }
-/* ===== 班級選擇 chips ===== */
+/* ===== 選擇 chips ===== */
 .chips{display:flex;gap:10px;flex-wrap:wrap}
 .chip{
-  padding:10px 22px;border-radius:var(--radius-pill);border:1.5px solid var(--line);
+  padding:10px 20px;border-radius:var(--radius-pill);border:1.5px solid var(--line);
   background:#fff;font-size:15px;cursor:pointer;color:var(--ink);font-family:var(--font-body);
+  display:inline-flex;align-items:center;gap:8px;
 }
 .chip.active{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
+.chip .x{display:none;font-size:13px;opacity:.85;padding:0 2px}
+body.manage-mode .chip.deletable .x{display:inline}
+.chips-empty{font-size:13px;color:var(--ink-soft)}
+/* ===== 溫度區間按鈕 ===== */
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt-btn{
+  padding:13px 8px;border-radius:var(--radius-tile);border:1.5px solid var(--line);
+  background:#fff;font-size:15px;font-weight:700;cursor:pointer;color:var(--ink);
+  font-family:var(--font-body);font-variant-numeric:tabular-nums;text-align:center;
+}
+.opt-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 /* ===== 清潔項目清單 ===== */
 .area-block{margin-bottom:14px}
 .area-head{
@@ -190,10 +202,13 @@ body.manage-mode .item-row .del{display:block}
 }
 .tool-btn.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700}
 .progress{font-size:13px;color:var(--ink-soft);text-align:center;margin-bottom:10px;font-variant-numeric:tabular-nums}
-/* ===== 新增項目列 ===== */
-#add-item-box{display:none;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-tile);padding:14px;margin-bottom:12px}
-#add-item-box .row{display:flex;gap:8px;margin-bottom:8px}
-#add-item-box input,#add-item-box select{padding:10px;font-size:14px}
+/* ===== 管理模式區塊 ===== */
+.manage-box{display:none;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-tile);padding:14px;margin-bottom:12px}
+body.manage-mode .manage-box{display:block}
+.manage-box .mb-title{font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:8px;letter-spacing:1px}
+.manage-box .row{display:flex;gap:8px;margin-bottom:8px}
+.manage-box .row:last-child{margin-bottom:0}
+.manage-box input,.manage-box select{padding:10px;font-size:14px}
 /* ===== 近期紀錄 ===== */
 .recent-table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 .recent-table th{background:var(--bg);padding:8px 6px;text-align:left;white-space:nowrap;font-weight:700}
@@ -247,7 +262,7 @@ body.manage-mode .item-row .del{display:block}
   <div class="hero">
     <div class="tag">— daily operations —</div>
     <h1>每一份例行紀錄，<br>都有<span>跡可循</span>。</h1>
-    <p class="desc">星安托嬰中心・行政表格電子化平台</p>
+    <p class="desc">星安教育集團・行政表格電子化平台</p>
   </div>
 
   <div class="section-head">
@@ -262,7 +277,7 @@ body.manage-mode .item-row .del{display:block}
       <div>
         <h3>冰箱溫度記錄</h3>
         <div class="en-name">Fridge Temperature</div>
-        <p>每日紀錄冷凍／冷藏溫度<br>冷凍 ≤ -18°C・冷藏 ≤ 7°C</p>
+        <p>選部門與場域，點選溫度區間<br>冷凍 ≤ -18°C・冷藏 ≤ 7°C</p>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -275,7 +290,7 @@ body.manage-mode .item-row .del{display:block}
       <div>
         <h3>環境清潔消毒記錄</h3>
         <div class="en-name">Cleaning &amp; Disinfection</div>
-        <p>各班每日清潔消毒打勾<br>項目可自行增減</p>
+        <p>托嬰部／幼兒部各班每日打勾<br>項目可增減・班級由園長／主任管理</p>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -307,12 +322,20 @@ body.manage-mode .item-row .del{display:block}
       <input type="date" id="fridge-date">
     </div>
     <div class="field">
-      <label>冷凍庫溫度（°C）<span class="hint">標準：低於 -18°C</span></label>
-      <input type="number" id="fridge-freezer" step="0.1" inputmode="decimal" placeholder="例如：-19.5">
+      <label>部門</label>
+      <div class="chips" id="fridge-dept-chips"></div>
     </div>
     <div class="field">
-      <label>冷藏庫溫度（°C）<span class="hint">標準：低於 7°C</span></label>
-      <input type="number" id="fridge-fridge" step="0.1" inputmode="decimal" placeholder="例如：4.0">
+      <label>場域</label>
+      <div class="chips" id="fridge-site-chips"><span class="chips-empty">請先選擇部門</span></div>
+    </div>
+    <div class="field">
+      <label>冷凍庫溫度<span class="hint">標準：低於 -18°C</span></label>
+      <div class="opt-grid" id="freezer-opts"></div>
+    </div>
+    <div class="field">
+      <label>冷藏庫溫度<span class="hint">標準：低於 7°C</span></label>
+      <div class="opt-grid" id="fridge-opts"></div>
     </div>
     <button class="submit-btn" id="fridge-submit" onclick="submitFridge()">送出紀錄</button>
     <button class="secondary-btn" onclick="loadRecent('fridge')">📋 查看近期紀錄</button>
@@ -332,17 +355,22 @@ body.manage-mode .item-row .del{display:block}
       <input type="date" id="clean-date">
     </div>
     <div class="field">
+      <label>部門</label>
+      <div class="chips" id="clean-dept-chips"></div>
+    </div>
+    <div class="field">
       <label>班級</label>
-      <div class="chips" id="clean-class-chips"></div>
+      <div class="chips" id="clean-class-chips"><span class="chips-empty">請先選擇部門</span></div>
     </div>
   </div>
   <div class="panel">
     <div class="toolbar">
       <button class="tool-btn" onclick="checkAll(true)">✓ 全部勾選</button>
       <button class="tool-btn" onclick="checkAll(false)">✗ 全部清除</button>
-      <button class="tool-btn" id="manage-btn" onclick="toggleManage()">⚙️ 管理項目</button>
+      <button class="tool-btn" id="manage-btn" onclick="toggleManage()">⚙️ 管理</button>
     </div>
-    <div id="add-item-box">
+    <div class="manage-box" id="item-manage-box">
+      <div class="mb-title" id="add-item-title">新增清潔項目</div>
       <div class="row">
         <input type="text" id="ai-area" placeholder="區域（如：教室環境）" style="flex:1">
         <select id="ai-freq" style="width:110px">
@@ -354,7 +382,14 @@ body.manage-mode .item-row .del{display:block}
         <button class="tool-btn on" style="width:90px" onclick="addItem()">＋新增</button>
       </div>
     </div>
-    <div class="progress" id="clean-progress">已勾選 0 項</div>
+    <div class="manage-box" id="class-manage-box" style="display:none">
+      <div class="mb-title" id="add-class-title">新增班級（限園長／主任）</div>
+      <div class="row">
+        <input type="text" id="ac-name" placeholder="班級名稱（如：星辰班）" style="flex:1">
+        <button class="tool-btn on" style="width:90px" onclick="addClass()">＋新增</button>
+      </div>
+    </div>
+    <div class="progress" id="clean-progress">請先選擇部門</div>
     <div id="clean-items"></div>
     <button class="submit-btn" style="margin-top:14px" id="clean-submit" onclick="submitCleaning()">送出紀錄</button>
     <button class="secondary-btn" onclick="loadRecent('cleaning')">📋 查看近期紀錄</button>
@@ -414,9 +449,10 @@ body.manage-mode .item-row .del{display:block}
 
 <script>
 /* ============================================================
- * 星安表格中心 前端 v1.1-design
+ * 星安表格中心 前端 v1.2
+ * 新增：冰箱部門/場域/溫度區間按鈕、清潔消毒雙部門、班級管理
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.1-design';
+var FRONTEND_VERSION = 'v1.2';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
@@ -424,9 +460,12 @@ var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
 var state = {
   uid: '',
   user: null,
-  classList: [],
+  depts: [],            // [{name, classes:[], sites:[]}]
+  freezerOpts: [],
+  fridgeOpts: [],
   items: [],
-  selectedClass: '',
+  fridgeDept: '', fridgeSite: '', freezerKey: '', fridgeKey: '',
+  cleanDept: '', selectedClass: '',
   lastActivity: Date.now()
 };
 
@@ -448,7 +487,9 @@ async function init() {
       return;
     }
     state.user = res.user;
-    state.classList = res.classList || [];
+    state.depts = res.depts || [];
+    state.freezerOpts = res.freezerOpts || [];
+    state.fridgeOpts = res.fridgeOpts || [];
     state.items = res.cleaningItems || [];
     renderApp(res.today);
     startIdleWatch();
@@ -470,17 +511,20 @@ function renderApp(today) {
   var u = state.user;
   document.getElementById('user-line').textContent =
     (u.role ? u.role + '・' : '') + u.name + ' 您好';
-  // 三張表日期預設今天
   var d = toInputDate(today);
   ['fridge-date', 'clean-date', 'toy-date'].forEach(function (id) {
     document.getElementById(id).value = d;
   });
-  renderClassChips();
-  renderItems();
+  renderFridgeForm();
+  renderCleanForm();
+}
+
+function deptOf(name) {
+  for (var i = 0; i < state.depts.length; i++) if (state.depts[i].name === name) return state.depts[i];
+  return null;
 }
 
 function toInputDate(s) {
-  // yyyy/MM/dd -> yyyy-MM-dd
   if (!s) { var n = new Date(); s = n.getFullYear() + '/' + (n.getMonth() + 1) + '/' + n.getDate(); }
   var p = s.split('/');
   return p[0] + '-' + String(p[1]).padStart(2, '0') + '-' + String(p[2]).padStart(2, '0');
@@ -521,29 +565,92 @@ function toast(msg, warn) {
 }
 function busy(on) { document.getElementById('busy').style.display = on ? 'flex' : 'none'; }
 
+function chipBtn(label, active, onClick, deletable, onDelete) {
+  var b = document.createElement('button');
+  b.className = 'chip' + (active ? ' active' : '') + (deletable ? ' deletable' : '');
+  var t = document.createElement('span');
+  t.textContent = label;
+  b.appendChild(t);
+  if (deletable) {
+    var x = document.createElement('span');
+    x.className = 'x';
+    x.textContent = '✕';
+    x.onclick = function (ev) { ev.stopPropagation(); onDelete(label); };
+    b.appendChild(x);
+  }
+  b.onclick = function () { onClick(label); };
+  return b;
+}
+
 /* ============================================================
- * 冰箱溫度
+ * 冰箱溫度（v2）
  * ============================================================ */
+function renderFridgeForm() {
+  // 部門
+  var dWrap = document.getElementById('fridge-dept-chips');
+  dWrap.innerHTML = '';
+  state.depts.forEach(function (d) {
+    dWrap.appendChild(chipBtn(d.name, state.fridgeDept === d.name, function (name) {
+      state.fridgeDept = name;
+      state.fridgeSite = '';
+      renderFridgeForm();
+    }));
+  });
+  // 場域
+  var sWrap = document.getElementById('fridge-site-chips');
+  sWrap.innerHTML = '';
+  var dept = deptOf(state.fridgeDept);
+  if (!dept) {
+    sWrap.innerHTML = '<span class="chips-empty">請先選擇部門</span>';
+  } else {
+    dept.sites.forEach(function (s) {
+      sWrap.appendChild(chipBtn(s, state.fridgeSite === s, function (name) {
+        state.fridgeSite = name;
+        renderFridgeForm();
+      }));
+    });
+  }
+  // 溫度區間
+  renderOptGrid('freezer-opts', state.freezerOpts, 'freezerKey');
+  renderOptGrid('fridge-opts', state.fridgeOpts, 'fridgeKey');
+}
+
+function renderOptGrid(elId, opts, stateKey) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  opts.forEach(function (o) {
+    var b = document.createElement('button');
+    b.className = 'opt-btn' + (state[stateKey] === o.key ? ' active' : '');
+    b.textContent = o.label;
+    b.onclick = function () { state[stateKey] = o.key; renderOptGrid(elId, opts, stateKey); };
+    wrap.appendChild(b);
+  });
+}
+
 async function submitFridge() {
-  var freezer = document.getElementById('fridge-freezer').value;
-  var fridge = document.getElementById('fridge-fridge').value;
-  if (freezer === '' || fridge === '') { toast('請輸入冷凍庫與冷藏庫溫度', true); return; }
+  if (!state.fridgeDept) { toast('請選擇部門', true); return; }
+  if (!state.fridgeSite) { toast('請選擇場域', true); return; }
+  if (!state.freezerKey || !state.fridgeKey) { toast('請點選冷凍庫與冷藏庫溫度區間', true); return; }
   busy(true);
   try {
     var res = await api({
       action: 'submitFridge',
       date: fromInputDate(document.getElementById('fridge-date').value),
-      freezer: freezer, fridge: fridge
+      dept: state.fridgeDept,
+      site: state.fridgeSite,
+      freezerKey: state.freezerKey,
+      fridgeKey: state.fridgeKey
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
     if (res.abnormal) {
-      toast('⚠️ 已記錄，但溫度異常：<br>' + res.warnings.join('<br>') + '<br>請儘速檢查冰箱！', true);
+      toast('⚠️ ' + res.site + ' 已記錄，但溫度異常：<br>' + res.warnings.join('<br>') + '<br>請儘速檢查冰箱！', true);
     } else {
-      toast('✅ 冰箱溫度已記錄（正常）');
+      toast('✅ ' + res.site + ' 冰箱溫度已記錄（正常）');
     }
-    document.getElementById('fridge-freezer').value = '';
-    document.getElementById('fridge-fridge').value = '';
+    // 保留部門，清空場域與溫度，方便連續登記不同場域
+    state.fridgeSite = ''; state.freezerKey = ''; state.fridgeKey = '';
+    renderFridgeForm();
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
@@ -573,25 +680,54 @@ async function submitToy() {
 }
 
 /* ============================================================
- * 環境清潔消毒
+ * 環境清潔消毒（v2：雙部門）
  * ============================================================ */
-function renderClassChips() {
-  var wrap = document.getElementById('clean-class-chips');
-  wrap.innerHTML = '';
-  state.classList.forEach(function (c) {
-    var b = document.createElement('button');
-    b.className = 'chip' + (state.selectedClass === c ? ' active' : '');
-    b.textContent = c;
-    b.onclick = function () { state.selectedClass = c; renderClassChips(); };
-    wrap.appendChild(b);
+function renderCleanForm() {
+  // 部門
+  var dWrap = document.getElementById('clean-dept-chips');
+  dWrap.innerHTML = '';
+  state.depts.forEach(function (d) {
+    dWrap.appendChild(chipBtn(d.name, state.cleanDept === d.name, function (name) {
+      state.cleanDept = name;
+      state.selectedClass = '';
+      renderCleanForm();
+    }));
   });
+  // 班級（管理模式下園長/主任可刪除）
+  var cWrap = document.getElementById('clean-class-chips');
+  cWrap.innerHTML = '';
+  var dept = deptOf(state.cleanDept);
+  var canManage = state.user && state.user.canManageClass;
+  if (!dept) {
+    cWrap.innerHTML = '<span class="chips-empty">請先選擇部門</span>';
+  } else {
+    dept.classes.forEach(function (c) {
+      cWrap.appendChild(chipBtn(c, state.selectedClass === c, function (name) {
+        state.selectedClass = name;
+        renderCleanForm();
+      }, canManage, removeClass));
+    });
+  }
+  // 管理區塊標題與顯示
+  document.getElementById('add-item-title').textContent =
+    dept ? '新增清潔項目（' + dept.name + '）' : '新增清潔項目（請先選擇部門）';
+  document.getElementById('class-manage-box').style.display =
+    (document.body.classList.contains('manage-mode') && canManage) ? 'block' : 'none';
+  document.getElementById('add-class-title').textContent =
+    dept ? '新增班級（' + dept.name + '・限園長／主任）' : '新增班級（請先選擇部門）';
+  renderItems();
+}
+
+function deptItems() {
+  return state.items.filter(function (it) { return it.dept === state.cleanDept; });
 }
 
 function renderItems() {
   var wrap = document.getElementById('clean-items');
   wrap.innerHTML = '';
+  if (!state.cleanDept) { updateProgress(); return; }
   var areas = {};
-  state.items.forEach(function (it) {
+  deptItems().forEach(function (it) {
     if (!areas[it.area]) areas[it.area] = [];
     areas[it.area].push(it);
   });
@@ -628,36 +764,40 @@ function checkArea(area) {
   updateProgress();
 }
 function updateProgress() {
+  var el = document.getElementById('clean-progress');
+  if (!state.cleanDept) { el.textContent = '請先選擇部門'; return; }
   var n = allChecks().filter(function (c) { return c.checked; }).length;
-  document.getElementById('clean-progress').textContent = '已勾選 ' + n + ' 項 / 共 ' + state.items.length + ' 項';
+  el.textContent = state.cleanDept + '：已勾選 ' + n + ' 項 / 共 ' + deptItems().length + ' 項';
 }
 
 function toggleManage() {
   var on = document.body.classList.toggle('manage-mode');
   document.getElementById('manage-btn').classList.toggle('on', on);
-  document.getElementById('add-item-box').style.display = on ? 'block' : 'none';
+  document.getElementById('item-manage-box').style.display = on ? 'block' : 'none';
+  renderCleanForm();
 }
 
 async function addItem() {
+  if (!state.cleanDept) { toast('請先選擇部門', true); return; }
   var area = document.getElementById('ai-area').value.trim();
   var name = document.getElementById('ai-name').value.trim();
   var freq = document.getElementById('ai-freq').value;
   if (!area || !name) { toast('請填寫區域與項目名稱', true); return; }
   busy(true);
   try {
-    var res = await api({ action: 'addCleaningItem', area: area, name: name, freq: freq });
+    var res = await api({ action: 'addCleaningItem', dept: state.cleanDept, area: area, name: name, freq: freq });
     busy(false);
     if (!res.ok) { toast(res.message || '新增失敗', true); return; }
     state.items = res.items;
     renderItems();
     document.getElementById('ai-name').value = '';
-    toast('✅ 已新增項目「' + name + '」');
+    toast('✅ 已新增 ' + state.cleanDept + ' 項目「' + name + '」');
   } catch (e) { busy(false); toast('連線失敗', true); }
 }
 
 async function removeItem(ev, id, name) {
   ev.preventDefault(); ev.stopPropagation();
-  if (!confirm('確定要移除項目「' + name + '」嗎？\n（歷史紀錄不會受影響，之後也可請 Claude 協助恢復）')) return;
+  if (!confirm('確定要移除項目「' + name + '」嗎？\n（歷史紀錄不會受影響）')) return;
   busy(true);
   try {
     var res = await api({ action: 'toggleCleaningItem', id: id });
@@ -669,7 +809,41 @@ async function removeItem(ev, id, name) {
   } catch (e) { busy(false); toast('連線失敗', true); }
 }
 
+/* ---------- 班級管理（限園長／主任） ---------- */
+async function addClass() {
+  if (!state.cleanDept) { toast('請先選擇部門', true); return; }
+  var name = document.getElementById('ac-name').value.trim();
+  if (!name) { toast('請輸入班級名稱', true); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'addClass', dept: state.cleanDept, name: name });
+    busy(false);
+    if (!res.ok) { toast(res.message || '新增失敗', true); return; }
+    var dept = deptOf(res.dept);
+    if (dept) dept.classes = res.classes;
+    document.getElementById('ac-name').value = '';
+    renderCleanForm();
+    toast('✅ 已新增班級「' + name + '」');
+  } catch (e) { busy(false); toast('連線失敗', true); }
+}
+
+async function removeClass(name) {
+  if (!confirm('確定要移除班級「' + name + '」嗎？\n（歷史紀錄不會受影響）')) return;
+  busy(true);
+  try {
+    var res = await api({ action: 'removeClass', dept: state.cleanDept, name: name });
+    busy(false);
+    if (!res.ok) { toast(res.message || '移除失敗', true); return; }
+    var dept = deptOf(res.dept);
+    if (dept) dept.classes = res.classes;
+    if (state.selectedClass === name) state.selectedClass = '';
+    renderCleanForm();
+    toast('已移除班級「' + name + '」');
+  } catch (e) { busy(false); toast('連線失敗', true); }
+}
+
 async function submitCleaning() {
+  if (!state.cleanDept) { toast('請先選擇部門', true); return; }
   if (!state.selectedClass) { toast('請先選擇班級', true); return; }
   var checked = allChecks().filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.name; });
   if (!checked.length) { toast('請至少勾選一個清潔項目', true); return; }
@@ -678,12 +852,13 @@ async function submitCleaning() {
     var res = await api({
       action: 'submitCleaning',
       date: fromInputDate(document.getElementById('clean-date').value),
+      dept: state.cleanDept,
       className: state.selectedClass,
       checked: checked
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
-    toast('✅ ' + state.selectedClass + '班清潔紀錄已送出（' + res.count + '／' + res.total + ' 項）');
+    toast('✅ ' + state.cleanDept + '・' + state.selectedClass + ' 清潔紀錄已送出（' + res.count + '／' + res.total + ' 項）');
     checkAll(false);
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
