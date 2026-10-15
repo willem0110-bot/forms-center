@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.6 | 星安 Design System -->
+<!-- fc-frontend v1.6.1 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -664,6 +664,10 @@ body.manage-mode .manage-box{display:block}
         <input type="text" id="cctv-loc" placeholder="例如：2F小寶班 活動區鏡頭">
       </div>
       <div class="field">
+        <label>查閱時段<span class="hint">必填</span></label>
+        <input type="text" id="cctv-period" placeholder="例如：10/14 15:00–15:30">
+      </div>
+      <div class="field">
         <label>事由及說明<span class="hint">必填</span></label>
         <textarea id="cctv-reason" placeholder="例如：家長申請調閱 10/14 15:00–15:30 畫面"></textarea>
       </div>
@@ -690,7 +694,7 @@ body.manage-mode .manage-box{display:block}
  * 星安表格中心 前端 v1.6
  * 新增：監視器設備與影像管理記錄表（第五張表）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.6';
+var FRONTEND_VERSION = 'v1.6.1';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
@@ -1421,9 +1425,11 @@ async function submitCctv() {
   var abnormal = (state.cctvHost === '否' || state.cctvRec === '否' || state.cctvVid === '否');
   if (abnormal && !issue) { toast('有項目勾「否」，請填寫異常說明／處理情形', true); return; }
   var camLoc = document.getElementById('cctv-loc').value.trim();
+  var period = document.getElementById('cctv-period').value.trim();
   var reason = document.getElementById('cctv-reason').value.trim();
   if (state.cctvMgmt !== '無') {
     if (!camLoc) { toast('請填寫查閱畫面／攝影機位置', true); return; }
+    if (!period) { toast('請填寫查閱時段', true); return; }
     if (!reason) { toast('請填寫事由及說明', true); return; }
   }
   busy(true);
@@ -1436,6 +1442,7 @@ async function submitCctv() {
       issue: issue,
       mgmt: state.cctvMgmt,
       camLoc: camLoc,
+      period: period,
       reason: reason,
       note: document.getElementById('cctv-note').value.trim()
     });
@@ -1447,7 +1454,7 @@ async function submitCctv() {
       toast('✅ ' + state.cctvDept + ' 監視器紀錄已送出' + (res.mgmt !== '無' ? '（含影像' + res.mgmt + '稽核）' : ''));
     }
     state.cctvHost = ''; state.cctvRec = ''; state.cctvVid = ''; state.cctvMgmt = '無';
-    ['cctv-issue', 'cctv-loc', 'cctv-reason', 'cctv-note'].forEach(function (id) {
+    ['cctv-issue', 'cctv-loc', 'cctv-period', 'cctv-reason', 'cctv-note'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
     renderCctvForm();
