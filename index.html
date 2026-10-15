@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.2 | 星安 Design System -->
+<!-- fc-frontend v1.3 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,8 +25,9 @@
   --bar-fridge:#5B7A8F;   /* 石板藍 */
   --bar-clean:#7C9070;    /* 鼠尾草綠 */
   --bar-toy:#C8923B;      /* 芥末黃 */
+  --bar-asset:#C97462;    /* 陳舊玫瑰紅 */
   /* 圖示底（柔和粉彩） */
-  --tint-mint:#E8F1E5; --tint-lavender:#E8E4F1; --tint-cream:#F6EBD4;
+  --tint-mint:#E8F1E5; --tint-lavender:#E8E4F1; --tint-cream:#F6EBD4; --tint-peach:#FBE8D8;
   /* 狀態 */
   --ok:#5C8F5C; --idle:#A8A8A8; --warn:#C96644;
   /* 形狀 */
@@ -111,6 +112,7 @@ header{
 .c-fridge .bar{background:var(--bar-fridge)}
 .c-clean .bar{background:var(--bar-clean)}
 .c-toy .bar{background:var(--bar-toy)}
+.c-asset .bar{background:var(--bar-asset)}
 .card .inner{display:flex;align-items:center;gap:16px;padding:18px 20px}
 .card .emoji{
   font-size:28px;width:60px;height:60px;border-radius:var(--radius-tile);
@@ -119,6 +121,7 @@ header{
 .c-fridge .emoji{background:var(--tint-lavender)}
 .c-clean .emoji{background:var(--tint-mint)}
 .c-toy .emoji{background:var(--tint-cream)}
+.c-asset .emoji{background:var(--tint-peach)}
 .card h3{font-family:var(--font-title);font-weight:700;font-size:17px}
 .card .en-name{font-family:var(--font-en);font-style:italic;font-size:13px;color:var(--ink-soft);margin:1px 0 4px}
 .card p{font-size:13px;color:var(--ink-soft);line-height:1.55}
@@ -139,6 +142,8 @@ header{
 .field{margin-bottom:16px}
 .field label{display:block;font-size:14px;font-weight:700;margin-bottom:7px}
 .field .hint{font-size:12px;color:var(--ink-soft);font-weight:400;margin-left:6px}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
 input[type=date],input[type=number],input[type=text],select,textarea{
   width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;
   font-size:16px;background:#fff;color:var(--ink);font-family:var(--font-body);
@@ -167,6 +172,16 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);border-c
 .chip .x{display:none;font-size:13px;opacity:.85;padding:0 2px}
 body.manage-mode .chip.deletable .x{display:inline}
 .chips-empty{font-size:13px;color:var(--ink-soft)}
+/* ===== 分頁切換膠囊 ===== */
+.tabbar{
+  display:flex;gap:6px;background:var(--bg);border:1px solid var(--line);
+  border-radius:var(--radius-pill);padding:5px;margin-bottom:16px;
+}
+.tabbar button{
+  flex:1;padding:10px;border:none;border-radius:var(--radius-pill);
+  background:transparent;font-size:14.5px;cursor:pointer;color:var(--ink-soft);font-family:var(--font-body);
+}
+.tabbar button.active{background:#fff;color:var(--ink);font-weight:700;box-shadow:var(--shadow-sm)}
 /* ===== 溫度區間按鈕 ===== */
 .opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .opt-btn{
@@ -209,6 +224,24 @@ body.manage-mode .manage-box{display:block}
 .manage-box .row{display:flex;gap:8px;margin-bottom:8px}
 .manage-box .row:last-child{margin-bottom:0}
 .manage-box input,.manage-box select{padding:10px;font-size:14px}
+/* ===== 財產清冊列表 ===== */
+.asset-row{
+  padding:12px 4px;border-bottom:1px dashed var(--line);
+}
+.asset-row:last-child{border-bottom:none}
+.asset-row .l1{display:flex;align-items:baseline;gap:8px}
+.asset-row .ano{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-soft)}
+.asset-row .aname{font-weight:700;font-size:15px;flex:1}
+.asset-row .astatus{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);flex-shrink:0}
+.st-ok{color:var(--ok);background:var(--tint-mint)}
+.st-warn{color:var(--warn);background:var(--accent-soft)}
+.st-idle{color:var(--ink-soft);background:var(--bg);border:1px solid var(--line)}
+.asset-row .l2{font-size:12.5px;color:var(--ink-soft);margin-top:4px;font-variant-numeric:tabular-nums}
+.asset-summary{
+  font-size:13px;color:var(--ink);background:var(--bg);border:1px solid var(--line);
+  border-radius:var(--radius-tile);padding:10px 14px;margin-bottom:10px;
+  font-variant-numeric:tabular-nums;text-align:center;
+}
 /* ===== 近期紀錄 ===== */
 .recent-table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 .recent-table th{background:var(--bg);padding:8px 6px;text-align:left;white-space:nowrap;font-weight:700}
@@ -267,7 +300,7 @@ body.manage-mode .manage-box{display:block}
 
   <div class="section-head">
     <div><span class="num">01</span><span class="label">ROUTINE FORMS</span></div>
-    <span class="note">3 forms available</span>
+    <span class="note">4 forms available</span>
   </div>
 
   <div class="card c-fridge" onclick="openForm('fridge')">
@@ -304,6 +337,19 @@ body.manage-mode .manage-box{display:block}
         <h3>教玩具檢修紀錄</h3>
         <div class="en-name">Toy Maintenance</div>
         <p>教玩具損壞、送修、報廢登記</p>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-asset" onclick="openForm('asset')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">📦</div>
+      <div>
+        <h3>財產清冊</h3>
+        <div class="en-name">Asset Inventory</div>
+        <p>設施設備／教玩具／圖書登記<br>自動編號・可搜尋瀏覽全清冊</p>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -443,16 +489,91 @@ body.manage-mode .manage-box{display:block}
   <div class="panel" id="toy-recent" style="display:none"></div>
 </div>
 
+<!-- ===== 財產清冊 ===== -->
+<div class="form-view" id="view-asset">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">財產清冊<span class="en-name">Asset Inventory</span></span>
+  </div>
+
+  <div class="tabbar">
+    <button id="asset-tab-add" class="active" onclick="switchAssetTab('add')">＋ 新增財產</button>
+    <button id="asset-tab-list" onclick="switchAssetTab('list')">📖 瀏覽清冊</button>
+  </div>
+
+  <!-- 新增財產 -->
+  <div class="panel" id="asset-add-panel">
+    <div class="field">
+      <label>類別</label>
+      <div class="chips" id="asset-cat-chips"></div>
+    </div>
+    <div class="field">
+      <label>財產編號<span class="hint">留白＝自動編號（如 W25028）</span></label>
+      <input type="text" id="as-no" placeholder="留白由系統自動編號">
+    </div>
+    <div class="field">
+      <label>名稱</label>
+      <input type="text" id="as-name" placeholder="例如：英芬陶德雙層櫃">
+    </div>
+    <div class="field">
+      <label>廠牌／廠商<span class="hint">選填</span></label>
+      <input type="text" id="as-brand" placeholder="例如：華森葳">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>數量</label>
+        <input type="number" id="as-qty" inputmode="numeric" value="1" min="1">
+      </div>
+      <div class="field">
+        <label>單價<span class="hint">元</span></label>
+        <input type="number" id="as-unit" inputmode="decimal" placeholder="總價自動計算">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>購置日期</label>
+        <input type="date" id="as-date">
+      </div>
+      <div class="field">
+        <label>使用年限<span class="hint">年</span></label>
+        <input type="number" id="as-life" inputmode="numeric" placeholder="例如 3 或 5">
+      </div>
+    </div>
+    <div class="field">
+      <label>放置處／保管人<span class="hint">選填</span></label>
+      <input type="text" id="as-keeper" placeholder="例如：2F小寶班・王老師">
+    </div>
+    <div class="field">
+      <label>備註<span class="hint">選填</span></label>
+      <textarea id="as-note" placeholder="其他補充說明"></textarea>
+    </div>
+    <button class="submit-btn" onclick="submitAsset()">登記財產</button>
+  </div>
+
+  <!-- 瀏覽清冊 -->
+  <div class="panel" id="asset-list-panel" style="display:none">
+    <div class="field">
+      <input type="text" id="as-search" placeholder="🔍 搜尋編號、名稱、廠商…" oninput="renderAssetList()">
+    </div>
+    <div class="field">
+      <div class="chips" id="asset-filter-chips"></div>
+    </div>
+    <div class="asset-summary" id="as-summary">載入中…</div>
+    <div id="as-rows"></div>
+    <button class="secondary-btn" onclick="fetchAssets(true)">🔄 重新整理</button>
+  </div>
+</div>
+
 <!-- Toast & Busy -->
 <div id="toast"></div>
 <div id="busy"><div class="box"><div class="spinner" style="width:26px;height:26px;border-width:3px"></div><span>處理中…</span></div></div>
 
 <script>
 /* ============================================================
- * 星安表格中心 前端 v1.2
- * 新增：冰箱部門/場域/溫度區間按鈕、清潔消毒雙部門、班級管理
+ * 星安表格中心 前端 v1.3
+ * 新增：財產清冊（登記＋瀏覽搜尋，資料源 Assets 分頁）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.2';
+var FRONTEND_VERSION = 'v1.3';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
@@ -460,12 +581,13 @@ var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
 var state = {
   uid: '',
   user: null,
-  depts: [],            // [{name, classes:[], sites:[]}]
+  depts: [],
   freezerOpts: [],
   fridgeOpts: [],
   items: [],
   fridgeDept: '', fridgeSite: '', freezerKey: '', fridgeKey: '',
   cleanDept: '', selectedClass: '',
+  assetCats: [], assetCat: '', assetFilter: '全部', assets: null,
   lastActivity: Date.now()
 };
 
@@ -491,6 +613,7 @@ async function init() {
     state.freezerOpts = res.freezerOpts || [];
     state.fridgeOpts = res.fridgeOpts || [];
     state.items = res.cleaningItems || [];
+    state.assetCats = res.assetCategories || [];
     renderApp(res.today);
     startIdleWatch();
   } catch (err) {
@@ -512,11 +635,12 @@ function renderApp(today) {
   document.getElementById('user-line').textContent =
     (u.role ? u.role + '・' : '') + u.name + ' 您好';
   var d = toInputDate(today);
-  ['fridge-date', 'clean-date', 'toy-date'].forEach(function (id) {
+  ['fridge-date', 'clean-date', 'toy-date', 'as-date'].forEach(function (id) {
     document.getElementById(id).value = d;
   });
   renderFridgeForm();
   renderCleanForm();
+  renderAssetForm();
 }
 
 function deptOf(name) {
@@ -583,10 +707,9 @@ function chipBtn(label, active, onClick, deletable, onDelete) {
 }
 
 /* ============================================================
- * 冰箱溫度（v2）
+ * 冰箱溫度
  * ============================================================ */
 function renderFridgeForm() {
-  // 部門
   var dWrap = document.getElementById('fridge-dept-chips');
   dWrap.innerHTML = '';
   state.depts.forEach(function (d) {
@@ -596,7 +719,6 @@ function renderFridgeForm() {
       renderFridgeForm();
     }));
   });
-  // 場域
   var sWrap = document.getElementById('fridge-site-chips');
   sWrap.innerHTML = '';
   var dept = deptOf(state.fridgeDept);
@@ -610,7 +732,6 @@ function renderFridgeForm() {
       }));
     });
   }
-  // 溫度區間
   renderOptGrid('freezer-opts', state.freezerOpts, 'freezerKey');
   renderOptGrid('fridge-opts', state.fridgeOpts, 'fridgeKey');
 }
@@ -648,7 +769,6 @@ async function submitFridge() {
     } else {
       toast('✅ ' + res.site + ' 冰箱溫度已記錄（正常）');
     }
-    // 保留部門，清空場域與溫度，方便連續登記不同場域
     state.fridgeSite = ''; state.freezerKey = ''; state.fridgeKey = '';
     renderFridgeForm();
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
@@ -680,10 +800,9 @@ async function submitToy() {
 }
 
 /* ============================================================
- * 環境清潔消毒（v2：雙部門）
+ * 環境清潔消毒
  * ============================================================ */
 function renderCleanForm() {
-  // 部門
   var dWrap = document.getElementById('clean-dept-chips');
   dWrap.innerHTML = '';
   state.depts.forEach(function (d) {
@@ -693,7 +812,6 @@ function renderCleanForm() {
       renderCleanForm();
     }));
   });
-  // 班級（管理模式下園長/主任可刪除）
   var cWrap = document.getElementById('clean-class-chips');
   cWrap.innerHTML = '';
   var dept = deptOf(state.cleanDept);
@@ -708,7 +826,6 @@ function renderCleanForm() {
       }, canManage, removeClass));
     });
   }
-  // 管理區塊標題與顯示
   document.getElementById('add-item-title').textContent =
     dept ? '新增清潔項目（' + dept.name + '）' : '新增清潔項目（請先選擇部門）';
   document.getElementById('class-manage-box').style.display =
@@ -861,6 +978,127 @@ async function submitCleaning() {
     toast('✅ ' + state.cleanDept + '・' + state.selectedClass + ' 清潔紀錄已送出（' + res.count + '／' + res.total + ' 項）');
     checkAll(false);
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * 財產清冊
+ * ============================================================ */
+function renderAssetForm() {
+  var wrap = document.getElementById('asset-cat-chips');
+  wrap.innerHTML = '';
+  state.assetCats.forEach(function (c) {
+    wrap.appendChild(chipBtn(c, state.assetCat === c, function (name) {
+      state.assetCat = name;
+      renderAssetForm();
+    }));
+  });
+}
+
+function switchAssetTab(tab) {
+  document.getElementById('asset-tab-add').classList.toggle('active', tab === 'add');
+  document.getElementById('asset-tab-list').classList.toggle('active', tab === 'list');
+  document.getElementById('asset-add-panel').style.display = tab === 'add' ? 'block' : 'none';
+  document.getElementById('asset-list-panel').style.display = tab === 'list' ? 'block' : 'none';
+  if (tab === 'list' && state.assets === null) fetchAssets(false);
+}
+
+async function submitAsset() {
+  if (!state.assetCat) { toast('請選擇類別', true); return; }
+  var name = document.getElementById('as-name').value.trim();
+  if (!name) { toast('請填寫財產名稱', true); return; }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'assetSubmit',
+      category: state.assetCat,
+      no: document.getElementById('as-no').value.trim(),
+      name: name,
+      brand: document.getElementById('as-brand').value.trim(),
+      qty: document.getElementById('as-qty').value,
+      unit: document.getElementById('as-unit').value,
+      date: fromInputDate(document.getElementById('as-date').value),
+      life: document.getElementById('as-life').value,
+      keeper: document.getElementById('as-keeper').value.trim(),
+      note: document.getElementById('as-note').value.trim()
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '登記失敗', true); return; }
+    toast('✅ 已登記 ' + res.no + '・' + name + (res.total !== '' ? '（總價 NT$' + Number(res.total).toLocaleString() + '）' : ''));
+    ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-note'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('as-qty').value = 1;
+    state.assets = null; // 清冊快取失效，下次瀏覽重新載入
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+async function fetchAssets(forced) {
+  busy(true);
+  try {
+    var res = await api({ action: 'assetList' });
+    busy(false);
+    if (!res.ok) { toast('載入清冊失敗', true); return; }
+    state.assets = res.assets || [];
+    if (res.categories && res.categories.length) state.assetCats = res.categories;
+    renderAssetFilterChips();
+    renderAssetList();
+    if (forced) toast('已重新載入清冊');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+function renderAssetFilterChips() {
+  var wrap = document.getElementById('asset-filter-chips');
+  wrap.innerHTML = '';
+  ['全部'].concat(state.assetCats).forEach(function (c) {
+    wrap.appendChild(chipBtn(c, state.assetFilter === c, function (name) {
+      state.assetFilter = name;
+      renderAssetFilterChips();
+      renderAssetList();
+    }));
+  });
+}
+
+function statusClass(st) {
+  if (st === '使用中') return 'st-ok';
+  if (st === '報廢' || st === '遺失') return 'st-warn';
+  return 'st-idle'; // 維修中等
+}
+
+function renderAssetList() {
+  if (state.assets === null) return;
+  var kw = document.getElementById('as-search').value.trim().toLowerCase();
+  var list = state.assets.filter(function (a) {
+    if (state.assetFilter !== '全部' && a.cat !== state.assetFilter) return false;
+    if (!kw) return true;
+    return (a.no + a.name + a.brand + a.keeper + a.note).toLowerCase().indexOf(kw) !== -1;
+  });
+  var sum = 0;
+  list.forEach(function (a) {
+    var v = parseFloat(String(a.total).replace(/,/g, ''));
+    if (!isNaN(v)) sum += v;
+  });
+  document.getElementById('as-summary').textContent =
+    '共 ' + list.length + ' 筆・總金額 NT$ ' + Math.round(sum).toLocaleString();
+  var wrap = document.getElementById('as-rows');
+  wrap.innerHTML = '';
+  if (!list.length) {
+    wrap.innerHTML = '<p style="color:var(--ink-soft);text-align:center;padding:16px 0">沒有符合的財產</p>';
+    return;
+  }
+  list.forEach(function (a) {
+    var row = document.createElement('div');
+    row.className = 'asset-row';
+    var meta = [a.cat, a.qty + ' 件'];
+    if (a.total !== '') meta.push('NT$ ' + a.total);
+    if (a.date) meta.push(a.date);
+    if (a.brand) meta.push(a.brand);
+    row.innerHTML =
+      '<div class="l1"><span class="ano">' + esc(a.no) + '</span>' +
+      '<span class="aname">' + esc(a.name) + '</span>' +
+      '<span class="astatus ' + statusClass(a.status) + '">' + esc(a.status || '使用中') + '</span></div>' +
+      '<div class="l2">' + esc(meta.join('・')) + (a.note ? '<br>備註：' + esc(a.note) : '') + '</div>';
+    wrap.appendChild(row);
+  });
 }
 
 /* ============================================================
