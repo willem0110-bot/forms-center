@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.5.1 | 星安 Design System -->
+<!-- fc-frontend v1.6 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -113,6 +113,7 @@ header{
 .c-clean .bar{background:var(--bar-clean)}
 .c-toy .bar{background:var(--bar-toy)}
 .c-asset .bar{background:var(--bar-asset)}
+.c-cctv .bar{background:var(--ink-soft)}
 .card .inner{display:flex;align-items:center;gap:16px;padding:18px 20px}
 .card .emoji{
   font-size:28px;width:60px;height:60px;border-radius:var(--radius-tile);
@@ -122,6 +123,7 @@ header{
 .c-clean .emoji{background:var(--tint-mint)}
 .c-toy .emoji{background:var(--tint-cream)}
 .c-asset .emoji{background:var(--tint-peach)}
+.c-cctv .emoji{background:var(--accent-soft)}
 .card h3{font-family:var(--font-title);font-weight:700;font-size:17px}
 .card .en-name{font-family:var(--font-en);font-style:italic;font-size:13px;color:var(--ink-soft);margin:1px 0 4px}
 .card p{font-size:13px;color:var(--ink-soft);line-height:1.55}
@@ -190,6 +192,7 @@ body.manage-mode .chip.deletable .x{display:inline}
   font-family:var(--font-body);font-variant-numeric:tabular-nums;text-align:center;
 }
 .opt-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.opt-btn.no.active{background:var(--warn);border-color:var(--warn)}
 /* ===== 清潔項目清單 ===== */
 .area-block{margin-bottom:14px}
 .area-head{
@@ -322,7 +325,7 @@ body.manage-mode .manage-box{display:block}
 
   <div class="section-head">
     <div><span class="num">01</span><span class="label">ROUTINE FORMS</span></div>
-    <span class="note">4 forms available</span>
+    <span class="note">5 forms available</span>
   </div>
 
   <div class="card c-fridge" onclick="openForm('fridge')">
@@ -372,6 +375,19 @@ body.manage-mode .manage-box{display:block}
         <h3>財產清冊</h3>
         <div class="en-name">Asset Inventory</div>
         <p>設施設備／教玩具／圖書登記<br>自動編號・可搜尋瀏覽全清冊</p>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-cctv" onclick="openForm('cctv')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">📹</div>
+      <div>
+        <h3>監視器與影像管理</h3>
+        <div class="en-name">CCTV &amp; Footage Log</div>
+        <p>每日設備檢查（主機／錄影／視訊）<br>影像查閱／刪除稽核紀錄</p>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -603,6 +619,65 @@ body.manage-mode .manage-box{display:block}
   </div>
 </div>
 
+<!-- ===== 監視器設備與影像管理 ===== -->
+<div class="form-view" id="view-cctv">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">監視器與影像管理<span class="en-name">CCTV &amp; Footage Log</span></span>
+  </div>
+  <div class="panel">
+    <div class="field">
+      <label>紀錄日期</label>
+      <input type="date" id="cctv-date">
+    </div>
+    <div class="field">
+      <label>部門</label>
+      <div class="chips" id="cctv-dept-chips"></div>
+    </div>
+    <div class="field">
+      <label>設備檢查</label>
+      <button type="button" class="secondary-btn" style="margin:0 0 12px" onclick="cctvAllOk()">✓ 三項全部正常</button>
+      <div class="field">
+        <label style="font-weight:500">監視主機正常運作</label>
+        <div class="opt-grid" id="cctv-host"></div>
+      </div>
+      <div class="field">
+        <label style="font-weight:500">錄影監控正常運作</label>
+        <div class="opt-grid" id="cctv-rec"></div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label style="font-weight:500">視訊清晰</label>
+        <div class="opt-grid" id="cctv-vid"></div>
+      </div>
+    </div>
+    <div class="field">
+      <label>異常說明／處理情形<span class="hint">任一項勾「否」時必填</span></label>
+      <textarea id="cctv-issue" placeholder="例如：2F 鏡頭畫面模糊，已通知廠商檢修"></textarea>
+    </div>
+    <div class="field">
+      <label>影像管理</label>
+      <div class="chips" id="cctv-mgmt-chips"></div>
+    </div>
+    <div id="cctv-mgmt-detail" style="display:none">
+      <div class="field">
+        <label>查閱畫面／攝影機位置<span class="hint">必填</span></label>
+        <input type="text" id="cctv-loc" placeholder="例如：2F小寶班 活動區鏡頭">
+      </div>
+      <div class="field">
+        <label>事由及說明<span class="hint">必填</span></label>
+        <textarea id="cctv-reason" placeholder="例如：家長申請調閱 10/14 15:00–15:30 畫面"></textarea>
+      </div>
+    </div>
+    <div class="field">
+      <label>備註<span class="hint">選填</span></label>
+      <input type="text" id="cctv-note" placeholder="其他補充">
+    </div>
+    <button class="submit-btn" onclick="submitCctv()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('cctv')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="cctv-recent" style="display:none"></div>
+</div>
+
 <!-- 照片燈箱 -->
 <div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" alt="財產照片"><div class="lb-close">✕</div></div>
 
@@ -612,10 +687,10 @@ body.manage-mode .manage-box{display:block}
 
 <script>
 /* ============================================================
- * 星安表格中心 前端 v1.5
- * 新增：照片燈箱放大、清冊列點擊編輯/刪除、狀態變更
+ * 星安表格中心 前端 v1.6
+ * 新增：監視器設備與影像管理記錄表（第五張表）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.5.1';
+var FRONTEND_VERSION = 'v1.6';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
@@ -632,6 +707,7 @@ var state = {
   cleanDept: '', selectedClass: '',
   assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '',
   editOrig: null, editPhotoId: '', removePhoto: false,
+  cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '無',
   lastActivity: Date.now()
 };
 
@@ -679,12 +755,13 @@ function renderApp(today) {
   document.getElementById('user-line').textContent =
     (u.role ? u.role + '・' : '') + u.name + ' 您好';
   var d = toInputDate(today);
-  ['fridge-date', 'clean-date', 'toy-date', 'as-date'].forEach(function (id) {
+  ['fridge-date', 'clean-date', 'toy-date', 'as-date', 'cctv-date'].forEach(function (id) {
     document.getElementById(id).value = d;
   });
   renderFridgeForm();
   renderCleanForm();
   renderAssetForm();
+  renderCctvForm();
 }
 
 function deptOf(name) {
@@ -1294,6 +1371,90 @@ function renderAssetList() {
 }
 
 /* ============================================================
+ * 監視器設備與影像管理
+ * ============================================================ */
+function renderCctvForm() {
+  var dWrap = document.getElementById('cctv-dept-chips');
+  dWrap.innerHTML = '';
+  state.depts.forEach(function (d) {
+    dWrap.appendChild(chipBtn(d.name, state.cctvDept === d.name, function (name) {
+      state.cctvDept = name;
+      renderCctvForm();
+    }));
+  });
+  renderYn('cctv-host', 'cctvHost');
+  renderYn('cctv-rec', 'cctvRec');
+  renderYn('cctv-vid', 'cctvVid');
+  var mWrap = document.getElementById('cctv-mgmt-chips');
+  mWrap.innerHTML = '';
+  ['無', '查閱', '刪除'].forEach(function (m) {
+    mWrap.appendChild(chipBtn(m, state.cctvMgmt === m, function (name) {
+      state.cctvMgmt = name;
+      renderCctvForm();
+    }));
+  });
+  document.getElementById('cctv-mgmt-detail').style.display =
+    state.cctvMgmt === '無' ? 'none' : 'block';
+}
+
+function renderYn(elId, stateKey) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  ['是', '否'].forEach(function (v) {
+    var b = document.createElement('button');
+    b.className = 'opt-btn' + (v === '否' ? ' no' : '') + (state[stateKey] === v ? ' active' : '');
+    b.textContent = v;
+    b.onclick = function () { state[stateKey] = v; renderYn(elId, stateKey); };
+    wrap.appendChild(b);
+  });
+}
+
+function cctvAllOk() {
+  state.cctvHost = '是'; state.cctvRec = '是'; state.cctvVid = '是';
+  renderCctvForm();
+}
+
+async function submitCctv() {
+  if (!state.cctvDept) { toast('請選擇部門', true); return; }
+  if (!state.cctvHost || !state.cctvRec || !state.cctvVid) { toast('三項設備檢查都要勾選 是／否', true); return; }
+  var issue = document.getElementById('cctv-issue').value.trim();
+  var abnormal = (state.cctvHost === '否' || state.cctvRec === '否' || state.cctvVid === '否');
+  if (abnormal && !issue) { toast('有項目勾「否」，請填寫異常說明／處理情形', true); return; }
+  var camLoc = document.getElementById('cctv-loc').value.trim();
+  var reason = document.getElementById('cctv-reason').value.trim();
+  if (state.cctvMgmt !== '無') {
+    if (!camLoc) { toast('請填寫查閱畫面／攝影機位置', true); return; }
+    if (!reason) { toast('請填寫事由及說明', true); return; }
+  }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'submitCctv',
+      date: fromInputDate(document.getElementById('cctv-date').value),
+      dept: state.cctvDept,
+      host: state.cctvHost, rec: state.cctvRec, vid: state.cctvVid,
+      issue: issue,
+      mgmt: state.cctvMgmt,
+      camLoc: camLoc,
+      reason: reason,
+      note: document.getElementById('cctv-note').value.trim()
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    if (res.abnormal) {
+      toast('⚠️ ' + state.cctvDept + ' 已記錄，設備異常：<br>' + res.warnings.join('<br>') + '<br>請儘速安排檢修！', true);
+    } else {
+      toast('✅ ' + state.cctvDept + ' 監視器紀錄已送出' + (res.mgmt !== '無' ? '（含影像' + res.mgmt + '稽核）' : ''));
+    }
+    state.cctvHost = ''; state.cctvRec = ''; state.cctvVid = ''; state.cctvMgmt = '無';
+    ['cctv-issue', 'cctv-loc', 'cctv-reason', 'cctv-note'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    renderCctvForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
  * 近期紀錄
  * ============================================================ */
 async function loadRecent(form) {
@@ -1302,7 +1463,7 @@ async function loadRecent(form) {
     var res = await api({ action: 'getRecent', form: form, n: 10 });
     busy(false);
     if (!res.ok) { toast('查詢失敗', true); return; }
-    var boxId = { fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent' }[form];
+    var boxId = { fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent' }[form];
     var box = document.getElementById(boxId);
     if (!res.rows.length) { box.style.display = 'block'; box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
     var hideCols = [];
