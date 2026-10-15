@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.4 | 星安 Design System -->
+<!-- fc-frontend v1.5 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -253,6 +253,17 @@ body.manage-mode .manage-box{display:block}
   border-radius:var(--radius-tile);padding:10px 14px;margin-bottom:10px;
   font-variant-numeric:tabular-nums;text-align:center;
 }
+/* ===== 照片燈箱 ===== */
+#lightbox{
+  display:none;position:fixed;inset:0;background:rgba(42,38,34,.92);
+  z-index:300;align-items:center;justify-content:center;padding:18px;
+}
+#lightbox img{max-width:100%;max-height:92vh;border-radius:12px;object-fit:contain}
+#lightbox .lb-close{
+  position:absolute;top:14px;right:16px;color:#fff;font-size:24px;cursor:pointer;
+  width:44px;height:44px;display:flex;align-items:center;justify-content:center;
+}
+.danger-btn{color:var(--warn) !important;border-color:var(--warn) !important}
 /* ===== 近期紀錄 ===== */
 .recent-table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
 .recent-table th{background:var(--bg);padding:8px 6px;text-align:left;white-space:nowrap;font-weight:700}
@@ -512,8 +523,11 @@ body.manage-mode .manage-box{display:block}
     <button id="asset-tab-list" onclick="switchAssetTab('list')">📖 瀏覽清冊</button>
   </div>
 
-  <!-- 新增財產 -->
+  <!-- 新增財產／編輯 -->
   <div class="panel" id="asset-add-panel">
+    <div class="asset-summary" id="asset-edit-banner" style="display:none">
+      ✏️ 正在編輯 <b id="aeb-no"></b>　<span style="text-decoration:underline;cursor:pointer" onclick="cancelEdit()">取消編輯</span>
+    </div>
     <div class="field">
       <label>類別</label>
       <div class="chips" id="asset-cat-chips"></div>
@@ -554,6 +568,12 @@ body.manage-mode .manage-box{display:block}
       <label>放置處／保管人<span class="hint">選填</span></label>
       <input type="text" id="as-keeper" placeholder="例如：2F小寶班・王老師">
     </div>
+    <div class="field" id="as-status-field" style="display:none">
+      <label>狀態</label>
+      <select id="as-status">
+        <option>使用中</option><option>維修中</option><option>報廢</option><option>遺失</option>
+      </select>
+    </div>
     <div class="field">
       <label>備註<span class="hint">選填</span></label>
       <textarea id="as-note" placeholder="其他補充說明"></textarea>
@@ -565,7 +585,8 @@ body.manage-mode .manage-box{display:block}
       <img id="as-photo-preview" alt="財產照片預覽">
       <button type="button" class="secondary-btn" id="as-photo-clear" style="display:none" onclick="clearAssetPhoto()">✕ 移除照片</button>
     </div>
-    <button class="submit-btn" onclick="submitAsset()">登記財產</button>
+    <button class="submit-btn" id="as-submit-btn" onclick="submitAsset()">登記財產</button>
+    <button class="secondary-btn danger-btn" id="as-delete-btn" style="display:none" onclick="deleteAsset()">🗑 刪除此筆財產</button>
   </div>
 
   <!-- 瀏覽清冊 -->
@@ -582,16 +603,19 @@ body.manage-mode .manage-box{display:block}
   </div>
 </div>
 
+<!-- 照片燈箱 -->
+<div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" alt="財產照片"><div class="lb-close">✕</div></div>
+
 <!-- Toast & Busy -->
 <div id="toast"></div>
 <div id="busy"><div class="box"><div class="spinner" style="width:26px;height:26px;border-width:3px"></div><span>處理中…</span></div></div>
 
 <script>
 /* ============================================================
- * 星安表格中心 前端 v1.4
- * 新增：財產照片（拍照上傳雲端硬碟、清冊縮圖）
+ * 星安表格中心 前端 v1.5
+ * 新增：照片燈箱放大、清冊列點擊編輯/刪除、狀態變更
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.4';
+var FRONTEND_VERSION = 'v1.5';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_LIMIT = 10 * 60 * 1000; // 閒置 10 分鐘自動登出
@@ -606,6 +630,7 @@ var state = {
   fridgeDept: '', fridgeSite: '', freezerKey: '', fridgeKey: '',
   cleanDept: '', selectedClass: '',
   assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '',
+  editOrig: null, editPhotoId: '', removePhoto: false,
   lastActivity: Date.now()
 };
 
@@ -1030,6 +1055,7 @@ function onAssetPhoto(input) {
       cv.getContext('2d').drawImage(img, 0, 0, w, h);
       var dataUrl = cv.toDataURL('image/jpeg', 0.82);
       state.assetPhoto = dataUrl.split(',')[1]; // 純 base64
+      state.removePhoto = false;
       var pv = document.getElementById('as-photo-preview');
       pv.src = dataUrl; pv.style.display = 'block';
       document.getElementById('as-photo-clear').style.display = 'block';
@@ -1040,11 +1066,101 @@ function onAssetPhoto(input) {
 }
 
 function clearAssetPhoto() {
+  if (state.editOrig && state.editPhotoId) state.removePhoto = true; // 編輯模式：移除既有照片
+  state.assetPhoto = '';
+  state.editPhotoId = '';
+  document.getElementById('as-photo').value = '';
+  var pv = document.getElementById('as-photo-preview');
+  pv.src = ''; pv.style.display = 'none';
+  document.getElementById('as-photo-clear').style.display = 'none';
+}
+
+/* ---------- 照片燈箱 ---------- */
+function openLightbox(ev, photoId) {
+  if (ev) ev.stopPropagation();
+  if (!photoId) return;
+  document.getElementById('lightbox-img').src =
+    'https://drive.google.com/thumbnail?id=' + photoId + '&sz=w1600';
+  document.getElementById('lightbox').style.display = 'flex';
+}
+function closeLightbox() {
+  document.getElementById('lightbox').style.display = 'none';
+  document.getElementById('lightbox-img').src = '';
+}
+
+/* ---------- 編輯／刪除 ---------- */
+function startEdit(no) {
+  var a = (state.assets || []).filter(function (x) { return x.no === no; })[0];
+  if (!a) return;
+  state.editOrig = no;
+  state.assetCat = a.cat;
+  state.assetPhoto = '';
+  state.removePhoto = false;
+  state.editPhotoId = String(a.photo || '').trim();
+  renderAssetForm();
+  document.getElementById('as-no').value = a.no;
+  document.getElementById('as-name').value = a.name;
+  document.getElementById('as-brand').value = a.brand || '';
+  document.getElementById('as-qty').value = a.qty || 1;
+  document.getElementById('as-unit').value = String(a.unit || '').replace(/,/g, '');
+  document.getElementById('as-date').value = a.date ? toInputDate(a.date) : '';
+  document.getElementById('as-life').value = a.life || '';
+  document.getElementById('as-keeper').value = a.keeper || '';
+  document.getElementById('as-note').value = a.note || '';
+  document.getElementById('as-status').value = a.status || '使用中';
+  var pv = document.getElementById('as-photo-preview');
+  if (state.editPhotoId) {
+    pv.src = 'https://drive.google.com/thumbnail?id=' + state.editPhotoId + '&sz=w800';
+    pv.style.display = 'block';
+    document.getElementById('as-photo-clear').style.display = 'block';
+  } else {
+    pv.src = ''; pv.style.display = 'none';
+    document.getElementById('as-photo-clear').style.display = 'none';
+  }
+  document.getElementById('asset-edit-banner').style.display = 'block';
+  document.getElementById('aeb-no').textContent = no;
+  document.getElementById('as-status-field').style.display = 'block';
+  document.getElementById('as-delete-btn').style.display =
+    (state.user && state.user.canManageClass) ? 'block' : 'none';
+  document.getElementById('as-submit-btn').textContent = '儲存變更';
+  switchAssetTab('add');
+  window.scrollTo(0, 0);
+}
+
+function cancelEdit() {
+  state.editOrig = null;
+  state.editPhotoId = '';
+  state.removePhoto = false;
+  ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-keeper', 'as-note'].forEach(function (id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('as-qty').value = 1;
+  document.getElementById('as-status').value = '使用中';
   state.assetPhoto = '';
   document.getElementById('as-photo').value = '';
   var pv = document.getElementById('as-photo-preview');
   pv.src = ''; pv.style.display = 'none';
   document.getElementById('as-photo-clear').style.display = 'none';
+  document.getElementById('asset-edit-banner').style.display = 'none';
+  document.getElementById('as-status-field').style.display = 'none';
+  document.getElementById('as-delete-btn').style.display = 'none';
+  document.getElementById('as-submit-btn').textContent = '登記財產';
+}
+
+async function deleteAsset() {
+  if (!state.editOrig) return;
+  var a = (state.assets || []).filter(function (x) { return x.no === state.editOrig; })[0] || {};
+  if (!confirm('確定要刪除「' + state.editOrig + '・' + (a.name || '') + '」嗎？\n資料會備份到試算表的 Assets_Trash 分頁，可請 Claude 協助復原。')) return;
+  busy(true);
+  try {
+    var res = await api({ action: 'assetDelete', origNo: state.editOrig });
+    busy(false);
+    if (!res.ok) { toast(res.message || '刪除失敗', true); return; }
+    toast('已刪除 ' + res.no + '（備份於 Assets_Trash 分頁）');
+    cancelEdit();
+    state.assets = null;
+    switchAssetTab('list');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
 function switchAssetTab(tab) {
@@ -1059,31 +1175,44 @@ async function submitAsset() {
   if (!state.assetCat) { toast('請選擇類別', true); return; }
   var name = document.getElementById('as-name').value.trim();
   if (!name) { toast('請填寫財產名稱', true); return; }
+  var payload = {
+    action: state.editOrig ? 'assetUpdate' : 'assetSubmit',
+    category: state.assetCat,
+    no: document.getElementById('as-no').value.trim(),
+    name: name,
+    brand: document.getElementById('as-brand').value.trim(),
+    qty: document.getElementById('as-qty').value,
+    unit: document.getElementById('as-unit').value,
+    date: fromInputDate(document.getElementById('as-date').value),
+    life: document.getElementById('as-life').value,
+    keeper: document.getElementById('as-keeper').value.trim(),
+    note: document.getElementById('as-note').value.trim(),
+    photo: state.assetPhoto
+  };
+  if (state.editOrig) {
+    payload.origNo = state.editOrig;
+    payload.status = document.getElementById('as-status').value;
+    payload.removePhoto = state.removePhoto;
+  }
   busy(true);
   try {
-    var res = await api({
-      action: 'assetSubmit',
-      category: state.assetCat,
-      no: document.getElementById('as-no').value.trim(),
-      name: name,
-      brand: document.getElementById('as-brand').value.trim(),
-      qty: document.getElementById('as-qty').value,
-      unit: document.getElementById('as-unit').value,
-      date: fromInputDate(document.getElementById('as-date').value),
-      life: document.getElementById('as-life').value,
-      keeper: document.getElementById('as-keeper').value.trim(),
-      note: document.getElementById('as-note').value.trim(),
-      photo: state.assetPhoto
-    });
+    var res = await api(payload);
     busy(false);
-    if (!res.ok) { toast(res.message || '登記失敗', true); return; }
-    toast('✅ 已登記 ' + res.no + '・' + name + (res.hasPhoto ? '（含照片）' : '') + (res.total !== '' ? '・總價 NT$' + Number(res.total).toLocaleString() : ''));
-    clearAssetPhoto();
-    ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-note'].forEach(function (id) {
-      document.getElementById(id).value = '';
-    });
-    document.getElementById('as-qty').value = 1;
-    state.assets = null; // 清冊快取失效，下次瀏覽重新載入
+    if (!res.ok) { toast(res.message || '儲存失敗', true); return; }
+    if (payload.origNo) {
+      toast('✅ 已更新 ' + res.no + '・' + name);
+      cancelEdit();
+      state.assets = null;
+      switchAssetTab('list');
+    } else {
+      toast('✅ 已登記 ' + res.no + '・' + name + (res.hasPhoto ? '（含照片）' : '') + (res.total !== '' && res.total != null ? '・總價 NT$' + Number(res.total).toLocaleString() : ''));
+      clearAssetPhoto();
+      ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-note'].forEach(function (id) {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('as-qty').value = 1;
+      state.assets = null; // 清冊快取失效，下次瀏覽重新載入
+    }
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
@@ -1148,8 +1277,7 @@ function renderAssetList() {
     if (a.date) meta.push(a.date);
     if (a.brand) meta.push(a.brand);
     var thumb = a.photo
-      ? '<a href="https://drive.google.com/file/d/' + esc(a.photo) + '/view" target="_blank" rel="noopener">' +
-        '<img class="asset-thumb" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(a.photo) + '&sz=w120" alt=""></a>'
+      ? '<img class="asset-thumb" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(a.photo) + '&sz=w120" alt="" onclick="openLightbox(event,\'' + esc(a.photo) + '\')">'
       : '<div class="asset-thumb ph">📷</div>';
     row.innerHTML = thumb +
       '<div class="asset-main">' +
@@ -1158,6 +1286,8 @@ function renderAssetList() {
       '<span class="astatus ' + statusClass(a.status) + '">' + esc(a.status || '使用中') + '</span></div>' +
       '<div class="l2">' + esc(meta.join('・')) + (a.note ? '<br>備註：' + esc(a.note) : '') + '</div>' +
       '</div>';
+    row.style.cursor = 'pointer';
+    row.onclick = (function (no) { return function () { startEdit(no); }; })(a.no);
     wrap.appendChild(row);
   });
 }
