@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.7 | 星安 Design System -->
+<!-- fc-frontend v1.8 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -238,6 +238,12 @@ body.manage-mode .manage-box{display:block}
   border:1px solid var(--line);background:var(--bg);
 }
 .asset-thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--idle);font-size:20px}
+.hide-btn{
+  align-self:center;flex-shrink:0;font-size:12.5px;color:var(--ink-soft);
+  border:1px solid var(--line);border-radius:var(--radius-pill);
+  padding:7px 11px;background:var(--bg);cursor:pointer;font-family:var(--font-body);white-space:nowrap;
+}
+.hide-btn.restore{color:var(--accent);border-color:var(--accent);font-weight:700}
 .asset-main{flex:1;min-width:0}
 #as-photo-preview{
   display:none;width:100%;max-height:220px;object-fit:contain;
@@ -695,7 +701,7 @@ body.manage-mode .manage-box{display:block}
  * 星安表格中心 前端 v1.6
  * 新增：監視器設備與影像管理記錄表（第五張表）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.7';
+var FRONTEND_VERSION = 'v1.8';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
@@ -710,7 +716,7 @@ var state = {
   items: [],
   fridgeDept: '', fridgeSite: '', freezerKey: '', fridgeKey: '',
   cleanDept: '', selectedClass: '',
-  assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '',
+  assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '', showHidden: false,
   editOrig: null, editPhotoId: '', removePhoto: false,
   cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '無',
   lastActivity: Date.now()
@@ -1348,6 +1354,12 @@ function renderAssetFilterChips() {
       renderAssetList();
     }));
   });
+  var hidN = (state.assets || []).filter(function (a) { return String(a.hidden || '').trim() === '是'; }).length;
+  wrap.appendChild(chipBtn('🙈 已隱藏 (' + hidN + ')', state.showHidden, function () {
+    state.showHidden = !state.showHidden;
+    renderAssetFilterChips();
+    renderAssetList();
+  }));
 }
 
 function statusClass(st) {
@@ -1356,10 +1368,26 @@ function statusClass(st) {
   return 'st-idle'; // 維修中等
 }
 
+async function toggleHide(ev, no) {
+  ev.stopPropagation();
+  busy(true);
+  try {
+    var res = await api({ action: 'assetToggleHide', no: no });
+    busy(false);
+    if (!res.ok) { toast(res.message || '操作失敗', true); return; }
+    (state.assets || []).forEach(function (a) { if (a.no === res.no) a.hidden = res.hidden ? '是' : ''; });
+    renderAssetFilterChips();
+    renderAssetList();
+    toast(res.hidden ? '已隱藏 ' + res.no + '（點「🙈 已隱藏」可復原）' : '✅ 已復原 ' + res.no);
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
 function renderAssetList() {
   if (state.assets === null) return;
   var kw = document.getElementById('as-search').value.trim().toLowerCase();
   var list = state.assets.filter(function (a) {
+    var isHid = String(a.hidden || '').trim() === '是';
+    if (state.showHidden ? !isHid : isHid) return false;
     if (state.assetFilter !== '全部' && a.cat !== state.assetFilter) return false;
     if (!kw) return true;
     return (a.no + a.name + a.brand + a.keeper + a.note).toLowerCase().indexOf(kw) !== -1;
@@ -1393,7 +1421,10 @@ function renderAssetList() {
       '<span class="aname">' + esc(a.name) + '</span>' +
       '<span class="astatus ' + statusClass(a.status) + '">' + esc(a.status || '使用中') + '</span></div>' +
       '<div class="l2">' + esc(meta.join('・')) + (a.note ? '<br>備註：' + esc(a.note) : '') + '</div>' +
-      '</div>';
+      '</div>' +
+      (state.showHidden
+        ? '<button class="hide-btn restore" onclick="toggleHide(event,\'' + esc(a.no) + '\')">↩ 復原</button>'
+        : '<button class="hide-btn" title="隱藏此筆" onclick="toggleHide(event,\'' + esc(a.no) + '\')">🙈</button>');
     row.style.cursor = 'pointer';
     row.onclick = (function (no) { return function () { startEdit(no); }; })(a.no);
     wrap.appendChild(row);
