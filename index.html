@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.9 | 星安 Design System -->
+<!-- fc-frontend v1.9.1 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -244,6 +244,13 @@ body.manage-mode .manage-box{display:block}
   padding:7px 11px;background:var(--bg);cursor:pointer;font-family:var(--font-body);white-space:nowrap;
 }
 .hide-btn.restore{color:var(--accent);border-color:var(--accent);font-weight:700}
+.dropzone{
+  width:100%;border:1.5px dashed var(--line);border-radius:var(--radius-tile);
+  background:var(--card);color:var(--ink);font-size:14px;font-family:var(--font-body);
+  padding:18px 12px;text-align:center;cursor:pointer;
+}
+.dropzone .dz-hint{display:block;margin-top:5px;font-size:12px;color:var(--ink-soft)}
+.dropzone.dragover{border-color:var(--accent);background:var(--accent-soft);border-style:solid}
 .asset-main{flex:1;min-width:0}
 #as-photo-preview{
   display:none;width:100%;max-height:220px;object-fit:contain;
@@ -604,7 +611,10 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <label>照片<span class="hint">選填・含安全標章，會存入園長雲端硬碟</span></label>
       <input type="file" id="as-photo" accept="image/*" style="display:none" onchange="onAssetPhoto(this)">
-      <button type="button" class="secondary-btn" style="margin-top:0" onclick="document.getElementById('as-photo').click()">📷 拍照／選擇照片</button>
+      <div id="as-dropzone" class="dropzone" onclick="document.getElementById('as-photo').click()">
+        📷 拍照／選擇照片
+        <span class="dz-hint">電腦版可直接把照片拖放到這裡</span>
+      </div>
       <img id="as-photo-preview" alt="財產照片預覽">
       <button type="button" class="secondary-btn" id="as-photo-clear" style="display:none" onclick="clearAssetPhoto()">✕ 移除照片</button>
     </div>
@@ -715,7 +725,7 @@ body.manage-mode .manage-box{display:block}
  * 星安表格中心 前端 v1.6
  * 新增：監視器設備與影像管理記錄表（第五張表）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.9';
+var FRONTEND_VERSION = 'v1.9.1';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
@@ -784,6 +794,7 @@ function renderApp(today) {
     document.getElementById(id).value = d;
   });
   setCctvTimeNow();
+  initAssetDropzone();
   renderFridgeForm();
   renderCleanForm();
   renderAssetForm();
@@ -1155,6 +1166,24 @@ async function submitCleaning() {
 /* ============================================================
  * 財產清冊
  * ============================================================ */
+function initAssetDropzone() {
+  var dz = document.getElementById('as-dropzone');
+  if (!dz) return;
+  ['dragenter', 'dragover'].forEach(function (evt) {
+    dz.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); dz.classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(function (evt) {
+    dz.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); });
+  });
+  dz.addEventListener('drop', function (e) {
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    handleAssetPhotoFile(f);
+  });
+  // 拖到框外時不讓瀏覽器直接開圖跳離頁面
+  window.addEventListener('dragover', function (e) { e.preventDefault(); });
+  window.addEventListener('drop', function (e) { e.preventDefault(); });
+}
+
 function renderAssetForm() {
   var wrap = document.getElementById('asset-cat-chips');
   wrap.innerHTML = '';
@@ -1167,8 +1196,12 @@ function renderAssetForm() {
 }
 
 function onAssetPhoto(input) {
-  var file = input.files && input.files[0];
+  handleAssetPhotoFile(input.files && input.files[0]);
+}
+
+function handleAssetPhotoFile(file) {
   if (!file) return;
+  if (String(file.type).indexOf('image/') !== 0) { toast('請拖放圖片檔案（jpg／png／heic）', true); return; }
   var reader = new FileReader();
   reader.onload = function (e) {
     var img = new Image();
