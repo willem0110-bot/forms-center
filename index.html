@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v1.9.1 | 星安 Design System -->
+<!-- fc-frontend v2.0 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -437,6 +437,26 @@ body.manage-mode .manage-box{display:block}
     <button class="submit-btn" id="fridge-submit" onclick="submitFridge()">送出紀錄</button>
     <button class="secondary-btn" onclick="loadRecent('fridge')">📋 查看近期紀錄</button>
   </div>
+  <div class="panel">
+    <div class="field">
+      <label>匯出報表<span class="hint">依月份／部門／場域匯出 CSV（Excel 可開）</span></label>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>月份</label>
+        <input type="month" id="fx-month">
+      </div>
+      <div class="field">
+        <label>部門</label>
+        <select id="fx-dept" onchange="fxDeptChanged()"><option value="">全部</option></select>
+      </div>
+    </div>
+    <div class="field">
+      <label>場域</label>
+      <select id="fx-site"><option value="">全部</option></select>
+    </div>
+    <button class="secondary-btn" style="margin-top:0" onclick="exportFridge()">⬇️ 匯出 CSV</button>
+  </div>
   <div class="panel" id="fridge-recent" style="display:none"></div>
 </div>
 
@@ -472,6 +492,12 @@ body.manage-mode .manage-box{display:block}
         <input type="text" id="ai-area" placeholder="區域（如：教室環境）" style="flex:1">
         <select id="ai-freq" style="width:110px">
           <option>每日一次</option><option>每週一次</option><option>每月一次</option>
+        </select>
+      </div>
+      <div class="row">
+        <select id="ai-scope" style="flex:1">
+          <option value="class">僅此班級</option>
+          <option value="all">全部班級共用</option>
         </select>
       </div>
       <div class="row">
@@ -725,7 +751,7 @@ body.manage-mode .manage-box{display:block}
  * 星安表格中心 前端 v1.6
  * 新增：監視器設備與影像管理記錄表（第五張表）
  * ============================================================ */
-var FRONTEND_VERSION = 'v1.9.1';
+var FRONTEND_VERSION = 'v2.0';
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
@@ -794,6 +820,7 @@ function renderApp(today) {
     document.getElementById(id).value = d;
   });
   setCctvTimeNow();
+  initFridgeExport();
   initAssetDropzone();
   renderFridgeForm();
   renderCleanForm();
@@ -874,6 +901,40 @@ function chipBtn(label, active, onClick, deletable, onDelete, renamable, onRenam
 /* ============================================================
  * 冰箱溫度
  * ============================================================ */
+function initFridgeExport() {
+  var now = new Date();
+  document.getElementById('fx-month').value =
+    now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2);
+  var dSel = document.getElementById('fx-dept');
+  state.depts.forEach(function (d) {
+    var op = document.createElement('option');
+    op.value = d.name; op.textContent = d.name;
+    dSel.appendChild(op);
+  });
+}
+
+function fxDeptChanged() {
+  var sSel = document.getElementById('fx-site');
+  sSel.innerHTML = '<option value="">全部</option>';
+  var dept = deptOf(document.getElementById('fx-dept').value);
+  if (dept) dept.sites.forEach(function (s) {
+    var op = document.createElement('option');
+    op.value = s; op.textContent = s;
+    sSel.appendChild(op);
+  });
+}
+
+function exportFridge() {
+  var m = document.getElementById('fx-month').value;
+  if (!m) { toast('請選擇匯出月份', true); return; }
+  var url = API + '?action=exportFridge&uid=' + encodeURIComponent(state.uid) +
+    '&month=' + encodeURIComponent(m) +
+    '&dept=' + encodeURIComponent(document.getElementById('fx-dept').value) +
+    '&site=' + encodeURIComponent(document.getElementById('fx-site').value);
+  window.open(url, '_blank');
+  toast('已送出匯出，請留意下載的 CSV 檔');
+}
+
 function renderFridgeForm() {
   var dWrap = document.getElementById('fridge-dept-chips');
   dWrap.innerHTML = '';
@@ -992,7 +1053,7 @@ function renderCleanForm() {
     });
   }
   document.getElementById('add-item-title').textContent =
-    dept ? '新增清潔項目（' + dept.name + '）' : '新增清潔項目（請先選擇部門）';
+    dept ? '新增清潔項目（' + dept.name + (state.selectedClass ? '・' + state.selectedClass : '') + '）' : '新增清潔項目（請先選擇部門）';
   document.getElementById('class-manage-box').style.display =
     (document.body.classList.contains('manage-mode') && canManage) ? 'block' : 'none';
   document.getElementById('add-class-title').textContent =
@@ -1001,13 +1062,16 @@ function renderCleanForm() {
 }
 
 function deptItems() {
-  return state.items.filter(function (it) { return it.dept === state.cleanDept; });
+  return state.items.filter(function (it) {
+    if (it.dept !== state.cleanDept) return false;
+    return !it.cls || it.cls === state.selectedClass; // 空白＝全班共用
+  });
 }
 
 function renderItems() {
   var wrap = document.getElementById('clean-items');
   wrap.innerHTML = '';
-  if (!state.cleanDept) { updateProgress(); return; }
+  if (!state.cleanDept || !state.selectedClass) { updateProgress(); return; }
   var areas = {};
   deptItems().forEach(function (it) {
     if (!areas[it.area]) areas[it.area] = [];
@@ -1027,6 +1091,7 @@ function renderItems() {
         '<input type="checkbox" data-name="' + esc(it.name) + '" data-area="' + esc(it.area) + '" onchange="updateProgress()">' +
         '<span class="iname">' + esc(it.name) + '</span>' +
         '<span class="ifreq">' + esc(it.freq) + '</span>' +
+        (it.cls ? '' : '<span class="ifreq">共用</span>') +
         '<span class="del" data-id="' + esc(it.id) + '" onclick="removeItem(event,\'' + esc(it.id) + '\',\'' + esc(it.name) + '\')">🗑</span>';
       block.appendChild(row);
     });
@@ -1047,9 +1112,9 @@ function checkArea(area) {
 }
 function updateProgress() {
   var el = document.getElementById('clean-progress');
-  if (!state.cleanDept) { el.textContent = '請先選擇部門'; return; }
+  if (!state.cleanDept || !state.selectedClass) { el.textContent = '請先選擇部門與班級'; return; }
   var n = allChecks().filter(function (c) { return c.checked; }).length;
-  el.textContent = state.cleanDept + '：已勾選 ' + n + ' 項 / 共 ' + deptItems().length + ' 項';
+  el.textContent = state.cleanDept + '・' + state.selectedClass + '：已勾選 ' + n + ' 項';
 }
 
 function toggleManage() {
@@ -1061,19 +1126,26 @@ function toggleManage() {
 
 async function addItem() {
   if (!state.cleanDept) { toast('請先選擇部門', true); return; }
+  var scope = document.getElementById('ai-scope').value;
+  if (scope === 'class' && !state.selectedClass) { toast('「僅此班級」需先選擇班級', true); return; }
   var area = document.getElementById('ai-area').value.trim();
   var name = document.getElementById('ai-name').value.trim();
   var freq = document.getElementById('ai-freq').value;
   if (!area || !name) { toast('請填寫區域與項目名稱', true); return; }
   busy(true);
   try {
-    var res = await api({ action: 'addCleaningItem', dept: state.cleanDept, area: area, name: name, freq: freq });
+    var res = await api({
+      action: 'addCleaningItem',
+      dept: state.cleanDept,
+      className: scope === 'class' ? state.selectedClass : '',
+      area: area, name: name, freq: freq
+    });
     busy(false);
     if (!res.ok) { toast(res.message || '新增失敗', true); return; }
     state.items = res.items;
     renderItems();
     document.getElementById('ai-name').value = '';
-    toast('✅ 已新增 ' + state.cleanDept + ' 項目「' + name + '」');
+    toast('✅ 已新增項目「' + name + '」（' + (scope === 'class' ? state.selectedClass : state.cleanDept + ' 全班共用') + '）');
   } catch (e) { busy(false); toast('連線失敗', true); }
 }
 
@@ -1158,7 +1230,7 @@ async function submitCleaning() {
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
-    toast('✅ ' + state.cleanDept + '・' + state.selectedClass + ' 清潔紀錄已送出（' + res.count + '／' + res.total + ' 項）');
+    toast('✅ ' + state.cleanDept + '・' + state.selectedClass + ' 清潔紀錄已送出');
     checkAll(false);
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
