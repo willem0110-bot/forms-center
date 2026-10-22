@@ -786,7 +786,7 @@ async function init() {
     state.uid = profile.userId;
     var res = await api({ action: 'getInitData' });
     if (!res.ok) {
-      showError(res.message || '授權失敗，請聯絡園長開通權限。');
+      showError((res.message || '授權失敗，請聯絡園長開通權限。') + uidHelp_());
       return;
     }
     state.user = res.user;
@@ -806,6 +806,30 @@ function showError(msg) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('error-msg').innerHTML = msg;
   document.getElementById('error-view').style.display = 'block';
+}
+
+/* 未授權畫面：顯示本人 LINE ID ＋ 一鍵複製，方便傳給園長開通 */
+function uidHelp_() {
+  if (!state.uid) return '';
+  return '<div style="margin-top:16px;font-size:12px;color:#8A8276">您的 LINE ID（複製後傳給園長即可開通）</div>' +
+    '<div style="margin-top:6px;word-break:break-all;font-size:12px;background:#F7F3EA;border:1px solid #E5DECE;border-radius:10px;padding:8px 10px">' + state.uid + '</div>' +
+    '<button onclick="copyUid(this)" style="margin-top:12px;background:#B84A2F;color:#fff;border:none;border-radius:999px;padding:9px 24px;font-size:14px;cursor:pointer">複製我的 ID</button>';
+}
+
+function copyUid(btn) {
+  var t = state.uid;
+  function done() { if (btn) { btn.textContent = '已複製 ✓'; btn.style.background = '#5C8F5C'; } }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(done).catch(function () { legacyCopy_(t); done(); });
+  } else { legacyCopy_(t); done(); }
+}
+
+function legacyCopy_(t) {
+  var ta = document.createElement('textarea');
+  ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); } catch (e) { }
+  document.body.removeChild(ta);
 }
 
 function renderApp(today) {
