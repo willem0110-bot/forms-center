@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v2.1 | 星安 Design System -->
+<!-- fc-frontend v3.0 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -302,6 +302,50 @@ body.manage-mode .manage-box{display:block}
   z-index:150;align-items:center;justify-content:center;
 }
 #busy .box{background:var(--card);border-radius:var(--radius-tile);padding:22px 30px;display:flex;gap:14px;align-items:center;box-shadow:var(--shadow-md)}
+/* ===== v3.0 合規紀錄：狀態膠囊／新卡片色 ===== */
+.dept-note{font-size:12.5px;color:var(--ink-soft);background:var(--card);border:1px solid var(--line);border-radius:var(--radius-pill);padding:7px 14px;margin:-8px 2px 22px;display:inline-block}
+.section-head.mt{margin-top:30px}
+.st{display:inline-block;margin-top:8px;font-size:12px;font-weight:700;padding:4px 10px;border-radius:var(--radius-pill);font-variant-numeric:tabular-nums;line-height:1.4}
+.st:empty{display:none}
+.st.ok{color:var(--ok);background:var(--tint-mint)}
+.st.todo{color:var(--warn);background:var(--accent-soft)}
+.st.part{color:#8F6521;background:var(--tint-cream)}
+.st.na{color:var(--ink-soft);background:var(--bg);border:1px solid var(--line)}
+.c-sample .bar{background:var(--bar-toy)} .c-sample .emoji{background:var(--tint-cream)}
+.c-light .bar{background:var(--bar-fridge)} .c-light .emoji{background:var(--tint-lavender)}
+.c-pest .bar{background:var(--bar-clean)} .c-pest .emoji{background:var(--tint-mint)}
+.c-infect .bar{background:var(--bar-asset)} .c-infect .emoji{background:var(--tint-peach)}
+.c-finance .bar{background:var(--ink)} .c-finance .emoji{background:var(--tint-cream)}
+.c-meet .bar{background:var(--bar-clean)} .c-meet .emoji{background:var(--tint-mint)}
+.c-menu .bar{background:var(--bar-toy)} .c-menu .emoji{background:var(--tint-cream)}
+.card.static{cursor:default}
+.card.static:active{transform:none;box-shadow:var(--shadow-sm)}
+.card .inner > div:nth-child(2){min-width:0;flex:1}
+.stat-list{margin-top:8px;font-size:12.5px;line-height:1.75;color:var(--ink)}
+.stat-list .ln{display:flex;gap:6px;align-items:baseline}
+.stat-list .k{color:var(--ink-soft);flex-shrink:0}
+.stat-list .bad{color:var(--warn);font-weight:700}
+.stat-list .good{color:var(--ok);font-weight:700}
+.link-mini{display:inline-block;margin-top:8px;font-size:12.5px;color:var(--accent);text-decoration:none;font-weight:700}
+/* 照片挑選 */
+.pp-preview{display:none;width:100%;max-height:220px;object-fit:contain;border-radius:12px;border:1px solid var(--line);margin-top:10px;background:var(--bg)}
+.mini-photo{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:3px 8px;cursor:pointer;font-size:13px}
+/* 照度表 */
+.lux-row{display:grid;grid-template-columns:1fr 92px;gap:8px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line)}
+.lux-row:last-child{border-bottom:none}
+.lux-row .nm{font-weight:700;font-size:14.5px}
+.lux-row .nm small{display:block;font-weight:400;font-size:11.5px;color:var(--ink-soft)}
+.lux-row .th{grid-column:1 / -1;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lux-row input{padding:10px;font-size:15px}
+.lux-row input.bad{outline:2px solid var(--warn);border-color:transparent}
+.calc-line{font-size:13px;color:var(--ink-soft);margin-top:6px;font-variant-numeric:tabular-nums}
+.calc-line b{color:var(--ink)}
+.check-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.check-row:last-child{border-bottom:none}
+.check-row .lbl{font-size:14.5px;flex:1}
+.check-row .opt-grid{width:150px;flex-shrink:0}
+.check-row .opt-btn{padding:9px 6px;font-size:14px}
+.field-row > input{flex:1;min-width:0;padding:10px 6px;font-size:14px}
 </style>
 </head>
 <body>
@@ -336,9 +380,12 @@ body.manage-mode .manage-box{display:block}
     <p class="desc">星安教育集團・行政表格電子化平台</p>
   </div>
 
+  <div class="dept-note" id="comp-note">托嬰部進度載入中…</div>
+
+  <!-- ===== 01 每日 ===== -->
   <div class="section-head">
-    <div><span class="num">01</span><span class="label">ROUTINE FORMS</span></div>
-    <span class="note">5 forms available</span>
+    <div><span class="num">01</span><span class="label">DAILY 每日</span></div>
+    <span class="note" id="sum-daily">daily logs</span>
   </div>
 
   <div class="card c-fridge" onclick="openForm('fridge')">
@@ -348,23 +395,182 @@ body.manage-mode .manage-box{display:block}
       <div>
         <h3>冰箱溫度記錄</h3>
         <div class="en-name">Fridge Temperature</div>
-        <p>選部門與場域，點選溫度區間<br>冷凍 ≤ -18°C・冷藏 ≤ 7°C</p>
+        <p>每日上午／下午各一次<br>冷凍 ≤ -18°C・冷藏 ≤ 7°C・母乳 0～4°C</p>
+        <div class="st" id="st-fridge"></div>
       </div>
       <div class="arrow">→</div>
     </div>
   </div>
 
-  <div class="card c-clean" onclick="openForm('clean')">
+  <div class="card c-clean" onclick="openClean('每日')">
     <div class="bar"></div>
     <div class="inner">
       <div class="emoji">🧽</div>
       <div>
         <h3>環境清潔消毒記錄</h3>
-        <div class="en-name">Cleaning &amp; Disinfection</div>
-        <p>托嬰部／幼兒部各班每日打勾<br>項目可增減・班級由園長／主任管理</p>
+        <div class="en-name">Daily Cleaning &amp; Disinfection</div>
+        <p>各班＋廚房每日打勾・消毒水濃度<br>廚房附三色砧板照片</p>
+        <div class="st" id="st-clean"></div>
       </div>
       <div class="arrow">→</div>
     </div>
+  </div>
+
+  <div class="card c-sample" onclick="openForm('sample')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🍱</div>
+      <div>
+        <h3>餐點 48 小時留樣</h3>
+        <div class="en-name">Food Sample Retention</div>
+        <p>單樣 ≥ 50g・混煮 ≥ 200g・附磅重照片<br>週五留樣自動延到週一中午</p>
+        <div class="st" id="st-sample"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-light" onclick="openForm('light')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">💡</div>
+      <div>
+        <h3>照度與溫濕度</h3>
+        <div class="en-name">Lighting &amp; Climate</div>
+        <p>活動室 350～700 Lux・備餐檯／洗衫區 200 Lux 以上<br>各班室溫與相對濕度</p>
+        <div class="st" id="st-light"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-cctv" onclick="openCctv('daily')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">📹</div>
+      <div>
+        <h3>監視器與影像管理</h3>
+        <div class="en-name">CCTV &amp; Footage Log</div>
+        <p>每日設備檢查（主機／錄影／視訊）<br>影像查閱／刪除稽核紀錄</p>
+        <div class="st" id="st-cctv"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <!-- ===== 02 每週 ===== -->
+  <div class="section-head mt">
+    <div><span class="num">02</span><span class="label">WEEKLY 每週</span></div>
+    <span class="note" id="sum-weekly">weekly checks</span>
+  </div>
+
+  <div class="card c-clean" onclick="openClean('每週')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🛏️</div>
+      <div>
+        <h3>寢具與大型設施清潔</h3>
+        <div class="en-name">Weekly Deep Cleaning</div>
+        <p>寢具帶回清洗／曬烘・大型設施與教玩具深層消毒<br>紫外線燈開啟時數</p>
+        <div class="st" id="st-clean-w"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-pest" onclick="openForm('pest')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🪤</div>
+      <div>
+        <h3>廚房病媒防制與衛生檢核</h3>
+        <div class="en-name">Pest Control Check</div>
+        <p>排水溝・紗窗・防鼠網・廚餘桶<br>蟑螂／老鼠／蒼蠅蹤跡</p>
+        <div class="st" id="st-pest"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-cctv" onclick="openCctv('weekly')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🎞️</div>
+      <div>
+        <h3>監視器每週巡檢</h3>
+        <div class="en-name">Weekly CCTV Inspection</div>
+        <p>鏡頭遮擋・時間同步・保存 30 天<br>抽查 30 天內 3 日錄影・附巡檢照片</p>
+        <div class="st" id="st-cctv-w"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <!-- ===== 03 每月 ===== -->
+  <div class="section-head mt">
+    <div><span class="num">03</span><span class="label">MONTHLY 每月</span></div>
+    <span class="note" id="sum-monthly">monthly review</span>
+  </div>
+
+  <div class="card c-infect" onclick="openForm('infection')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🧴</div>
+      <div>
+        <h3>衛生保健與感控月檢</h3>
+        <div class="en-name">Infection Control Review</div>
+        <p>全園消毒抽查・消毒液濃度・洗手設施<br>傳染病個案統計與隔離檢討</p>
+        <div class="st" id="st-infect"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-finance" id="card-finance" style="display:none" onclick="openForm('finance')">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">💰</div>
+      <div>
+        <h3>收退費對帳</h3>
+        <div class="en-name">Monthly Fee Reconciliation</div>
+        <p>收托人數・應收／實收・退費收據・補助款<br>僅園長／主任可見</p>
+        <div class="st" id="st-finance"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-meet static">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">📋</div>
+      <div>
+        <h3>行政會議／教保會議</h3>
+        <div class="en-name">Meetings · from 園務簽核</div>
+        <p>兩種會議須分開召開，紀錄由園務簽核系統發布</p>
+        <div class="stat-list" id="meet-body">載入中…</div>
+        <a class="link-mini" href="https://liff.line.me/2009933933-vhJYygsZ" target="_blank" rel="noopener">前往園務簽核 →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card c-menu static">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🍽️</div>
+      <div>
+        <h3>下月營養菜單公告</h3>
+        <div class="en-name">Menu Notice · from 托嬰日誌</div>
+        <p>每月 25 日前於托嬰日誌公告區發布（標題含「餐點」或「菜單」）</p>
+        <div class="stat-list" id="menu-body">載入中…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 04 其他 ===== -->
+  <div class="section-head mt">
+    <div><span class="num">04</span><span class="label">OTHER 其他</span></div>
+    <span class="note">as needed</span>
   </div>
 
   <div class="card c-toy" onclick="openForm('toy')">
@@ -392,19 +598,6 @@ body.manage-mode .manage-box{display:block}
       <div class="arrow">→</div>
     </div>
   </div>
-
-  <div class="card c-cctv" onclick="openForm('cctv')">
-    <div class="bar"></div>
-    <div class="inner">
-      <div class="emoji">📹</div>
-      <div>
-        <h3>監視器與影像管理</h3>
-        <div class="en-name">CCTV &amp; Footage Log</div>
-        <p>每日設備檢查（主機／錄影／視訊）<br>影像查閱／刪除稽核紀錄</p>
-      </div>
-      <div class="arrow">→</div>
-    </div>
-  </div>
 </div>
 
 <!-- ===== 冰箱溫度 ===== -->
@@ -417,6 +610,10 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <label>紀錄日期</label>
       <input type="date" id="fridge-date">
+    </div>
+    <div class="field">
+      <label>班次<span class="hint">每日上午、下午各記一次</span></label>
+      <div class="chips" id="fridge-shift-chips"></div>
     </div>
     <div class="field">
       <label>部門</label>
@@ -433,6 +630,10 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <label>冷藏庫溫度<span class="hint">標準：低於 7°C</span></label>
       <div class="opt-grid" id="fridge-opts"></div>
+    </div>
+    <div class="field" id="milk-field" style="display:none">
+      <label>母乳專區溫度<span class="hint">標準：0～4°C</span></label>
+      <div class="opt-grid" id="milk-opts"></div>
     </div>
     <button class="submit-btn" id="fridge-submit" onclick="submitFridge()">送出紀錄</button>
     <button class="secondary-btn" onclick="loadRecent('fridge')">📋 查看近期紀錄</button>
@@ -466,6 +667,10 @@ body.manage-mode .manage-box{display:block}
     <button class="back-btn" onclick="goHome()">‹ 返回</button>
     <span class="form-title">環境清潔消毒<span class="en-name">Cleaning &amp; Disinfection</span></span>
   </div>
+  <div class="tabbar">
+    <button id="clean-tab-daily" class="active" onclick="switchCleanForm('每日')">每日清潔</button>
+    <button id="clean-tab-weekly" onclick="switchCleanForm('每週')">每週清潔</button>
+  </div>
   <div class="panel">
     <div class="field">
       <label>紀錄日期</label>
@@ -478,6 +683,20 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <label>班級</label>
       <div class="chips" id="clean-class-chips"><span class="chips-empty">請先選擇部門</span></div>
+    </div>
+    <div class="field" id="conc-field">
+      <label>消毒水濃度<span class="hint">必填</span></label>
+      <div class="chips" id="conc-chips"></div>
+    </div>
+    <div class="field" id="uv-field" style="display:none">
+      <label>紫外線燈開啟時數<span class="hint">本週合計（小時）・沒開請填 0</span></label>
+      <input type="number" id="clean-uv" inputmode="decimal" min="0" step="0.5" placeholder="例如 3">
+    </div>
+    <div class="field" id="board-field" style="display:none">
+      <label>三色砧板照片<span class="hint">必填・紅（生）藍（熟）綠（果）分開擺放拍一張</span></label>
+      <input type="file" id="pp-board" accept="image/*" style="display:none" onchange="pickPhoto('board', this)">
+      <button type="button" class="dropzone" onclick="document.getElementById('pp-board').click()">📷 拍照／選擇照片</button>
+      <img class="pp-preview" id="pv-board" alt="砧板照片預覽">
     </div>
   </div>
   <div class="panel">
@@ -668,6 +887,11 @@ body.manage-mode .manage-box{display:block}
     <button class="back-btn" onclick="goHome()">‹ 返回</button>
     <span class="form-title">監視器與影像管理<span class="en-name">CCTV &amp; Footage Log</span></span>
   </div>
+  <div class="tabbar">
+    <button id="cctv-tab-daily" class="active" onclick="switchCctvTab('daily')">每日檢查</button>
+    <button id="cctv-tab-weekly" onclick="switchCctvTab('weekly')">每週巡檢</button>
+  </div>
+  <div id="cctv-daily-wrap">
   <div class="panel">
     <div class="field-row">
       <div class="field">
@@ -737,6 +961,180 @@ body.manage-mode .manage-box{display:block}
     <button class="secondary-btn" onclick="loadRecent('cctv')">📋 查看近期紀錄</button>
   </div>
   <div class="panel" id="cctv-recent" style="display:none"></div>
+  </div>
+  <div id="cctv-weekly-wrap" style="display:none">
+    <div class="panel">
+      <div class="field"><label>巡檢日期</label><input type="date" id="cctvw-date"></div>
+      <div class="field"><label>部門</label><div class="chips" id="cctvw-dept-chips"></div></div>
+      <div class="field">
+        <label>巡檢項目</label>
+        <button type="button" class="secondary-btn" style="margin:0 0 8px" onclick="cctvwAllOk()">✓ 六項全部正常</button>
+        <div id="cctvw-rows"></div>
+      </div>
+      <div class="field">
+        <label>抽查錄影日期<span class="hint">30 天內任選 3 天，各調閱一段確認</span></label>
+        <div class="field-row" style="gap:8px">
+          <input type="date" id="cctvw-s1"><input type="date" id="cctvw-s2"><input type="date" id="cctvw-s3">
+        </div>
+      </div>
+      <div class="field"><label>抽查結果</label><div class="opt-grid" id="cctvw-result"></div></div>
+      <div class="field">
+        <label>異常說明／處理情形<span class="hint">有「否」或抽查異常時必填</span></label>
+        <textarea id="cctvw-issue" placeholder="例如：3F 鏡頭被櫃子擋住一半，已移位並重新確認畫面"></textarea>
+      </div>
+      <div class="field">
+        <label>巡檢照片<span class="hint">必填・例如監視主機畫面或保存天數畫面</span></label>
+        <input type="file" id="pp-cctvw" accept="image/*" style="display:none" onchange="pickPhoto('cctvw', this)">
+        <button type="button" class="dropzone" onclick="document.getElementById('pp-cctvw').click()">📷 拍照／選擇照片</button>
+        <img class="pp-preview" id="pv-cctvw" alt="巡檢照片預覽">
+      </div>
+      <button class="submit-btn" onclick="submitCctvWeekly()">送出巡檢</button>
+      <button class="secondary-btn" onclick="loadRecent('cctvWeekly')">📋 查看近期巡檢</button>
+    </div>
+    <div class="panel" id="cctvw-recent" style="display:none"></div>
+  </div>
+</div>
+
+<!-- ===== 餐點 48 小時留樣 ===== -->
+<div class="form-view" id="view-sample">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">餐點 48 小時留樣<span class="en-name">Food Sample Retention</span></span>
+  </div>
+  <div class="panel">
+    <div class="field-row">
+      <div class="field"><label>留樣日期</label><input type="date" id="sample-date" onchange="updateSampleDeadline()"></div>
+      <div class="field"><label>入庫時間</label><input type="time" id="sample-time" onchange="updateSampleDeadline()"></div>
+    </div>
+    <div class="field"><label>部門</label><div class="chips" id="sample-dept-chips"></div></div>
+    <div class="field"><label>餐別</label><div class="chips" id="sample-meal-chips"></div></div>
+    <div class="field"><label>菜色名稱</label><input type="text" id="sample-dish" placeholder="例如：鮭魚蔬菜粥"></div>
+    <div class="field"><label>留樣類型</label><div class="opt-grid" id="sample-type"></div></div>
+    <div class="field">
+      <label>留樣重量<span class="hint">公克</span></label>
+      <input type="number" id="sample-weight" inputmode="decimal" min="0" placeholder="磅秤顯示的重量" oninput="updateSampleDeadline()">
+      <div class="calc-line" id="sample-calc"></div>
+    </div>
+    <div class="field">
+      <label>磅重照片<span class="hint">必填・密封容器放在磅秤上拍一張</span></label>
+      <input type="file" id="pp-sample" accept="image/*" style="display:none" onchange="pickPhoto('sample', this)">
+      <button type="button" class="dropzone" onclick="document.getElementById('pp-sample').click()">📷 拍照／選擇照片</button>
+      <img class="pp-preview" id="pv-sample" alt="留樣照片預覽">
+    </div>
+    <button class="submit-btn" onclick="submitSample()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('sample')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="sample-recent" style="display:none"></div>
+</div>
+
+<!-- ===== 照度與溫濕度 ===== -->
+<div class="form-view" id="view-light">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">照度與溫濕度<span class="en-name">Lighting &amp; Climate Log</span></span>
+  </div>
+  <div class="panel">
+    <div class="field"><label>測量日期</label><input type="date" id="light-date"></div>
+    <div class="field"><label>部門</label><div class="chips" id="light-dept-chips"></div></div>
+    <div class="field">
+      <label>各場所測量值<span class="hint">只填今天有量的場所</span></label>
+      <div id="light-rows"><span class="chips-empty">請先選擇部門</span></div>
+    </div>
+    <div class="field">
+      <label>改善說明<span class="hint">照度未達標準時必填</span></label>
+      <textarea id="light-fix" placeholder="例如：星翔班 300 Lux，已加開輔助燈並報修燈管"></textarea>
+    </div>
+    <button class="submit-btn" onclick="submitLight()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('light')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="light-recent" style="display:none"></div>
+</div>
+
+<!-- ===== 廚房病媒防制 ===== -->
+<div class="form-view" id="view-pest">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">廚房病媒防制與衛生檢核<span class="en-name">Weekly Pest Control Check</span></span>
+  </div>
+  <div class="panel">
+    <div class="field"><label>檢核日期</label><input type="date" id="pest-date"></div>
+    <div class="field"><label>部門</label><div class="chips" id="pest-dept-chips"></div></div>
+    <div class="field">
+      <label>檢核項目</label>
+      <button type="button" class="secondary-btn" style="margin:0 0 8px" onclick="pestAllOk()">✓ 全部正常／無蹤跡</button>
+      <div id="pest-rows"></div>
+    </div>
+    <div class="field">
+      <label>異常說明／處置<span class="hint">任一項異常或發現蹤跡時必填</span></label>
+      <textarea id="pest-issue" placeholder="例如：排水溝發現蟑螂，已請病媒業者 10/30 施藥"></textarea>
+    </div>
+    <button class="submit-btn" onclick="submitPest()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('pest')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="pest-recent" style="display:none"></div>
+</div>
+
+<!-- ===== 感控月檢 ===== -->
+<div class="form-view" id="view-infection">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">衛生保健與感控月檢<span class="en-name">Monthly Infection Control</span></span>
+  </div>
+  <div class="panel">
+    <div class="field"><label>月份</label><input type="month" id="inf-month"></div>
+    <div class="field"><label>部門</label><div class="chips" id="inf-dept-chips"></div></div>
+    <div class="field">
+      <label>檢核項目</label>
+      <div id="inf-rows"></div>
+    </div>
+    <div class="field">
+      <label>本月傳染病個案數<span class="hint">沒有請填 0</span></label>
+      <input type="number" id="inf-cases" inputmode="numeric" min="0" step="1" placeholder="0">
+    </div>
+    <div class="field">
+      <label>個案說明／隔離措施檢討<span class="hint">有個案時必填</span></label>
+      <textarea id="inf-case-note" placeholder="例如：星樂班 1 名腸病毒，停托 7 天，教室全面以 500ppm 漂白水消毒"></textarea>
+    </div>
+    <div class="field">
+      <label>改善事項<span class="hint">有「不符合」時必填</span></label>
+      <textarea id="inf-improve" placeholder="例如：2F 洗手台擦手紙補充不及，改為每日兩次巡檢"></textarea>
+    </div>
+    <button class="submit-btn" onclick="submitInfection()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('infection')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="infection-recent" style="display:none"></div>
+</div>
+
+<!-- ===== 收退費對帳（限園長／主任） ===== -->
+<div class="form-view" id="view-finance">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">收退費對帳<span class="en-name">Monthly Fee Reconciliation</span></span>
+  </div>
+  <div class="panel">
+    <div class="field"><label>對帳月份</label><input type="month" id="fin-month"></div>
+    <div class="field"><label>部門</label><div class="chips" id="fin-dept-chips"></div></div>
+    <div class="field"><label>當月收托人數</label><input type="number" id="fin-kids" inputmode="numeric" min="0"></div>
+    <div class="field-row">
+      <div class="field"><label>應收金額</label><input type="number" id="fin-due" inputmode="numeric" min="0" oninput="updateFinCalc()"></div>
+      <div class="field"><label>實收金額</label><input type="number" id="fin-paid" inputmode="numeric" min="0" oninput="updateFinCalc()"></div>
+    </div>
+    <div class="calc-line" id="fin-calc" style="margin:-8px 0 14px"></div>
+    <div class="field-row">
+      <div class="field"><label>退費筆數</label><input type="number" id="fin-refund-n" inputmode="numeric" min="0" placeholder="0"></div>
+      <div class="field"><label>退費金額</label><input type="number" id="fin-refund-amt" inputmode="numeric" min="0" placeholder="0"></div>
+    </div>
+    <div class="field"><label>退費收據已簽收</label><div class="chips" id="fin-signed-chips"></div></div>
+    <div class="field"><label>政府補助款<span class="hint">元</span></label><input type="number" id="fin-subsidy" inputmode="numeric" min="0" placeholder="0"></div>
+    <div class="field"><label>補助款狀態</label><div class="chips" id="fin-sub-chips"></div></div>
+    <div class="field">
+      <label>差異說明<span class="hint">有差額、收據未簽或補助未全數入帳時必填</span></label>
+      <textarea id="fin-note" placeholder="例如：1 位家長 11/5 補繳 12,500 元"></textarea>
+    </div>
+    <button class="submit-btn" onclick="submitFinance()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('finance')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="finance-recent" style="display:none"></div>
 </div>
 
 <!-- 照片燈箱 -->
@@ -748,10 +1146,14 @@ body.manage-mode .manage-box{display:block}
 
 <script>
 /* ============================================================
- * 星安表格中心 前端 v1.6
- * 新增：監視器設備與影像管理記錄表（第五張表）
+ * 星安表格中心 前端 v3.0
+ * v3.0：托嬰中心每日／每週／每月紀錄（首頁三區＋托嬰部完成度）
+ *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
+ *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
+ *   唯讀：行政／教保會議（園務簽核）、下月菜單（托嬰日誌公告）
  * ============================================================ */
-var FRONTEND_VERSION = 'v2.1';
+var FRONTEND_VERSION = 'v3.0';
+var COMP_DEPT = '托嬰部'; // 首頁完成度顯示的部門
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
 var IDLE_ENABLED = false; // 閒置自動登出開關（2026-10-15 園長要求先關閉；要重新啟用改成 true 即可）
@@ -769,6 +1171,10 @@ var state = {
   assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '', showHidden: false,
   editOrig: null, editPhotoId: '', removePhoto: false,
   cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '無',
+  fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['500ppm', '1000ppm'], kitchen: '廚房',
+  cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
+  sampleDept: '', sampleMeal: '', sampleType: '', lightDept: '', pestDept: '', pest: {},
+  infDept: '', inf: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
   lastActivity: Date.now()
 };
 
@@ -795,6 +1201,10 @@ async function init() {
     state.fridgeOpts = res.fridgeOpts || [];
     state.items = res.cleaningItems || [];
     state.assetCats = res.assetCategories || [];
+    state.milkOpts = res.milkOpts || [];
+    if (res.shifts) state.shifts = res.shifts;
+    if (res.concOpts) state.concOpts = res.concOpts;
+    if (res.kitchen) state.kitchen = res.kitchen;
     renderApp(res.today);
     startIdleWatch();
   } catch (err) {
@@ -840,16 +1250,30 @@ function renderApp(today) {
   document.getElementById('user-line').textContent =
     (u.role ? u.role + '・' : '') + u.name + ' 您好';
   var d = toInputDate(today);
-  ['fridge-date', 'clean-date', 'toy-date', 'as-date', 'cctv-date'].forEach(function (id) {
+  ['fridge-date', 'clean-date', 'toy-date', 'as-date', 'cctv-date', 'sample-date', 'light-date', 'pest-date', 'cctvw-date'].forEach(function (id) {
     document.getElementById(id).value = d;
   });
   setCctvTimeNow();
+  document.getElementById('sample-time').value = nowHm();
+  document.getElementById('inf-month').value = ymInput(0);
+  document.getElementById('fin-month').value = ymInput(-1);
+  state.fridgeShift = new Date().getHours() < 12 ? '上午' : '下午';
+  var dd = defaultDept();
+  state.sampleDept = state.lightDept = state.pestDept = state.infDept = state.finDept = state.cctvwDept = dd;
+  if (state.user.canManageClass) document.getElementById('card-finance').style.display = 'block';
   initFridgeExport();
   initAssetDropzone();
   renderFridgeForm();
   renderCleanForm();
   renderAssetForm();
   renderCctvForm();
+  renderSampleForm();
+  renderLightForm();
+  renderPestForm();
+  renderInfForm();
+  renderFinForm();
+  renderCctvWeeklyForm();
+  loadCompliance();
 }
 
 function deptOf(name) {
@@ -885,6 +1309,7 @@ function goHome() {
   document.querySelectorAll('.form-view').forEach(function (v) { v.style.display = 'none'; });
   document.getElementById('home').style.display = 'block';
   window.scrollTo(0, 0);
+  if (state.compDirty) loadCompliance();
 }
 
 /* ---------- Toast / Busy ---------- */
@@ -1016,8 +1441,13 @@ function renderFridgeForm() {
       }));
     });
   }
+  renderChips('fridge-shift-chips', state.shifts, 'fridgeShift');
   renderOptGrid('freezer-opts', state.freezerOpts, 'freezerKey');
   renderOptGrid('fridge-opts', state.fridgeOpts, 'fridgeKey');
+  var isNursery = state.fridgeDept === '托嬰部';
+  document.getElementById('milk-field').style.display = isNursery ? 'block' : 'none';
+  if (!isNursery) state.milkKey = '';
+  renderOptGrid('milk-opts', state.milkOpts, 'milkKey');
 }
 
 function renderOptGrid(elId, opts, stateKey) {
@@ -1035,7 +1465,9 @@ function renderOptGrid(elId, opts, stateKey) {
 async function submitFridge() {
   if (!state.fridgeDept) { toast('請選擇部門', true); return; }
   if (!state.fridgeSite) { toast('請選擇場域', true); return; }
+  if (!state.fridgeShift) { toast('請選擇班次（上午／下午）', true); return; }
   if (!state.freezerKey || !state.fridgeKey) { toast('請點選冷凍庫與冷藏庫溫度區間', true); return; }
+  if (state.fridgeDept === '托嬰部' && !state.milkKey) { toast('請點選母乳專區溫度（沒有請選「無母乳專區」）', true); return; }
   busy(true);
   try {
     var res = await api({
@@ -1044,7 +1476,9 @@ async function submitFridge() {
       dept: state.fridgeDept,
       site: state.fridgeSite,
       freezerKey: state.freezerKey,
-      fridgeKey: state.fridgeKey
+      fridgeKey: state.fridgeKey,
+      shift: state.fridgeShift,
+      milkKey: state.milkKey
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
@@ -1053,7 +1487,8 @@ async function submitFridge() {
     } else {
       toast('✅ ' + res.site + ' 冰箱溫度已記錄（正常）');
     }
-    state.fridgeSite = ''; state.freezerKey = ''; state.fridgeKey = '';
+    afterSubmit();
+    state.fridgeSite = ''; state.freezerKey = ''; state.fridgeKey = ''; state.milkKey = '';
     renderFridgeForm();
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
@@ -1109,7 +1544,18 @@ function renderCleanForm() {
         renderCleanForm();
       }, canManage, removeClass, canManage, renameClass));
     });
+    if (state.cleanForm === '每日') {
+      cWrap.appendChild(chipBtn(state.kitchen, state.selectedClass === state.kitchen, function (name) {
+        state.selectedClass = name;
+        renderCleanForm();
+      }));
+    }
   }
+  renderChips('conc-chips', state.concOpts, 'cleanConc');
+  document.getElementById('conc-field').style.display = state.cleanForm === '每日' ? 'block' : 'none';
+  document.getElementById('uv-field').style.display = state.cleanForm === '每週' ? 'block' : 'none';
+  document.getElementById('board-field').style.display =
+    (state.cleanForm === '每日' && state.selectedClass === state.kitchen) ? 'block' : 'none';
   document.getElementById('add-item-title').textContent =
     dept ? '新增清潔項目（' + dept.name + (state.selectedClass ? '・' + state.selectedClass : '') + '）' : '新增清潔項目（請先選擇部門）';
   document.getElementById('class-manage-box').style.display =
@@ -1122,8 +1568,23 @@ function renderCleanForm() {
 function deptItems() {
   return state.items.filter(function (it) {
     if (it.dept !== state.cleanDept) return false;
+    if ((it.form || '每日') !== state.cleanForm) return false;
+    if (state.selectedClass === state.kitchen) return it.cls === state.kitchen; // 廚房只看廚房項目
     return !it.cls || it.cls === state.selectedClass; // 空白＝全班共用
   });
+}
+
+function openClean(form) {
+  switchCleanForm(form);
+  openForm('clean');
+}
+function switchCleanForm(form) {
+  state.cleanForm = form;
+  if (form === '每週' && state.selectedClass === state.kitchen) state.selectedClass = '';
+  document.getElementById('clean-tab-daily').classList.toggle('active', form === '每日');
+  document.getElementById('clean-tab-weekly').classList.toggle('active', form === '每週');
+  document.getElementById('ai-freq').value = form === '每週' ? '每週一次' : '每日一次';
+  renderCleanForm();
 }
 
 function renderItems() {
@@ -1172,7 +1633,7 @@ function updateProgress() {
   var el = document.getElementById('clean-progress');
   if (!state.cleanDept || !state.selectedClass) { el.textContent = '請先選擇部門與班級'; return; }
   var n = allChecks().filter(function (c) { return c.checked; }).length;
-  el.textContent = state.cleanDept + '・' + state.selectedClass + '：已勾選 ' + n + ' 項';
+  el.textContent = state.cleanForm + '・' + state.cleanDept + '・' + state.selectedClass + '：已勾選 ' + n + ' 項';
 }
 
 function toggleManage() {
@@ -1185,6 +1646,7 @@ function toggleManage() {
 async function addItem() {
   if (!state.cleanDept) { toast('請先選擇部門', true); return; }
   var scope = document.getElementById('ai-scope').value;
+  if (state.selectedClass === state.kitchen) scope = 'class'; // 廚房項目一律只屬於廚房
   if (scope === 'class' && !state.selectedClass) { toast('「僅此班級」需先選擇班級', true); return; }
   var area = document.getElementById('ai-area').value.trim();
   var name = document.getElementById('ai-name').value.trim();
@@ -1196,7 +1658,7 @@ async function addItem() {
       action: 'addCleaningItem',
       dept: state.cleanDept,
       className: scope === 'class' ? state.selectedClass : '',
-      area: area, name: name, freq: freq
+      area: area, name: name, freq: freq, form: state.cleanForm
     });
     busy(false);
     if (!res.ok) { toast(res.message || '新增失敗', true); return; }
@@ -1277,6 +1739,11 @@ async function submitCleaning() {
   if (!state.selectedClass) { toast('請先選擇班級', true); return; }
   var checked = allChecks().filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.name; });
   if (!checked.length) { toast('請至少勾選一個清潔項目', true); return; }
+  var isKitchen = state.selectedClass === state.kitchen;
+  if (state.cleanForm === '每日' && !state.cleanConc) { toast('請選擇消毒水濃度', true); return; }
+  var uv = document.getElementById('clean-uv').value;
+  if (state.cleanForm === '每週' && state.cleanDept === '托嬰部' && uv === '') { toast('請填紫外線燈開啟時數（沒開請填 0）', true); return; }
+  if (isKitchen && !state.photos.board) { toast('廚房請拍三色砧板照片', true); return; }
   busy(true);
   try {
     var res = await api({
@@ -1284,12 +1751,19 @@ async function submitCleaning() {
       date: fromInputDate(document.getElementById('clean-date').value),
       dept: state.cleanDept,
       className: state.selectedClass,
+      form: state.cleanForm,
+      conc: state.cleanForm === '每日' ? state.cleanConc : '',
+      uvHours: state.cleanForm === '每週' ? uv : '',
+      boardPhoto: isKitchen ? state.photos.board : '',
       checked: checked
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
-    toast('✅ ' + state.cleanDept + '・' + state.selectedClass + ' 清潔紀錄已送出');
+    toast('✅ ' + state.cleanDept + '・' + state.selectedClass + ' ' + state.cleanForm + '清潔紀錄已送出');
+    afterSubmit();
     checkAll(false);
+    document.getElementById('clean-uv').value = '';
+    clearPhoto('board');
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
@@ -1697,12 +2171,510 @@ async function submitCctv() {
     } else {
       toast('✅ ' + state.cctvDept + ' 監視器紀錄已送出' + (res.mgmt !== '無' ? '（含影像' + res.mgmt + '稽核）' : ''));
     }
+    afterSubmit();
     state.cctvHost = ''; state.cctvRec = ''; state.cctvVid = ''; state.cctvMgmt = '無';
     setCctvTimeNow();
     ['cctv-issue', 'cctv-site', 'cctv-care', 'cctv-loc', 'cctv-period', 'cctv-reason', 'cctv-note'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
     renderCctvForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * v3.0 托嬰中心每日／每週／每月：共用工具
+ * ============================================================ */
+function todayYmd() {
+  var n = new Date();
+  return n.getFullYear() + '/' + ('0' + (n.getMonth() + 1)).slice(-2) + '/' + ('0' + n.getDate()).slice(-2);
+}
+function nowHm() {
+  var t = new Date();
+  return ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+}
+function ymInput(offset) {
+  var n = new Date(); n.setDate(1); n.setMonth(n.getMonth() + (offset || 0));
+  return n.getFullYear() + '-' + ('0' + (n.getMonth() + 1)).slice(-2);
+}
+function defaultDept() {
+  return deptOf(COMP_DEPT) ? COMP_DEPT : (state.depts[0] ? state.depts[0].name : '');
+}
+function renderDeptChips(elId, stateKey, after) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  state.depts.forEach(function (d) {
+    wrap.appendChild(chipBtn(d.name, state[stateKey] === d.name, function (name) {
+      state[stateKey] = name;
+      renderDeptChips(elId, stateKey, after);
+      if (after) after();
+    }));
+  });
+}
+function renderChips(elId, opts, stateKey, after) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  opts.forEach(function (o) {
+    wrap.appendChild(chipBtn(o, state[stateKey] === o, function (name) {
+      state[stateKey] = name;
+      renderChips(elId, opts, stateKey, after);
+      if (after) after();
+    }));
+  });
+}
+// 二選一按鈕（bad＝會標成警示色的選項）
+function renderPick(elId, opts, bad, getter, setter) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  opts.forEach(function (v) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'opt-btn' + (v === bad ? ' no' : '') + (getter() === v ? ' active' : '');
+    b.textContent = v;
+    b.onclick = function () { setter(v); renderPick(elId, opts, bad, getter, setter); };
+    wrap.appendChild(b);
+  });
+}
+// 一組檢核列：items=[{key,label,opts,bad}]，值存在 store[key]
+function renderCheckRows(elId, items, store) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  items.forEach(function (it) {
+    var row = document.createElement('div');
+    row.className = 'check-row';
+    row.innerHTML = '<span class="lbl">' + esc(it.label) + '</span><div class="opt-grid" id="' + elId + '-' + it.key + '"></div>';
+    wrap.appendChild(row);
+    renderPick(elId + '-' + it.key, it.opts, it.bad,
+      function () { return store[it.key]; },
+      function (v) { store[it.key] = v; });
+  });
+}
+
+/* ---------- 照片挑選（壓縮 1280px／q0.82，送純 base64） ---------- */
+function pickPhoto(key, input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (String(file.type).indexOf('image/') !== 0) { toast('請選擇圖片檔案', true); return; }
+  var reader = new FileReader();
+  reader.onload = function (e) {
+    var img = new Image();
+    img.onload = function () {
+      var MAX = 1280, w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { var r = Math.min(MAX / w, MAX / h); w = Math.round(w * r); h = Math.round(h * r); }
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      var dataUrl = cv.toDataURL('image/jpeg', 0.82);
+      state.photos[key] = dataUrl.split(',')[1];
+      var pv = document.getElementById('pv-' + key);
+      pv.src = dataUrl; pv.style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function clearPhoto(key) {
+  state.photos[key] = '';
+  var inp = document.getElementById('pp-' + key); if (inp) inp.value = '';
+  var pv = document.getElementById('pv-' + key); if (pv) { pv.src = ''; pv.style.display = 'none'; }
+}
+
+function afterSubmit() { state.compDirty = true; }
+
+/* ============================================================
+ * 首頁狀態（托嬰部）
+ * ============================================================ */
+async function loadCompliance() {
+  try {
+    var res = await api({ action: 'getCompliance', dept: COMP_DEPT });
+    if (!res.ok) { document.getElementById('comp-note').textContent = '進度讀取失敗：' + (res.message || res.error || ''); return; }
+    state.comp = res;
+    state.compDirty = false;
+    renderCompliance(res);
+  } catch (e) {
+    document.getElementById('comp-note').textContent = '進度讀取失敗，請下拉重新整理';
+  }
+}
+function setSt(id, cls, text) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'st ' + cls;
+  el.textContent = text;
+}
+function cntDone(list, fn) { return list.filter(fn || function (x) { return x.done; }).length; }
+function md(s) { var p = String(s || '').split('/'); return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : s; }
+
+function renderCompliance(c) {
+  var WD = ['日', '一', '二', '三', '四', '五', '六'];
+  var tp = c.today.split('/');
+  var wd = WD[new Date(+tp[0], +tp[1] - 1, +tp[2]).getDay()];
+  document.getElementById('comp-note').textContent = '狀態顯示：' + c.dept + '・' + md(c.today) + '（' + wd + '）';
+  document.getElementById('sum-daily').textContent = md(c.today) + ' today';
+  document.getElementById('sum-weekly').textContent = md(c.week[0]) + '–' + md(c.week[1]);
+  document.getElementById('sum-monthly').textContent = c.month.replace('/', '.');
+  var D = c.daily, W = c.weekly, M = c.monthly;
+
+  if (Array.isArray(D.fridge) && D.fridge.length) {
+    var am = cntDone(D.fridge, function (x) { return x.am; }), pm = cntDone(D.fridge, function (x) { return x.pm; }), n = D.fridge.length;
+    setSt('st-fridge', (am === n && pm === n) ? 'ok' : (am + pm ? 'part' : 'todo'), '今日 上午 ' + am + '/' + n + '・下午 ' + pm + '/' + n);
+  }
+  if (Array.isArray(D.cleaning)) {
+    var cd = cntDone(D.cleaning);
+    var miss = D.cleaning.filter(function (x) { return !x.done; }).map(function (x) { return x.cls; });
+    setSt('st-clean', cd === D.cleaning.length ? 'ok' : (cd ? 'part' : 'todo'),
+      '今日 ' + cd + '/' + D.cleaning.length + (miss.length ? '・未填：' + miss.join('、') : ' 全部完成'));
+  }
+  if (Array.isArray(D.sample)) {
+    var sd = cntDone(D.sample);
+    setSt('st-sample', sd === D.sample.length ? 'ok' : (sd ? 'part' : 'todo'),
+      D.sample.map(function (x) { return x.meal + (x.done ? '✓' : '—'); }).join('　'));
+  }
+  if (Array.isArray(D.light)) {
+    var ld = cntDone(D.light), lb = D.light.filter(function (x) { return x.bad; }).length;
+    setSt('st-light', lb ? 'todo' : (ld === D.light.length ? 'ok' : (ld ? 'part' : 'todo')),
+      '今日 ' + ld + '/' + D.light.length + ' 處' + (lb ? '・' + lb + ' 處未達標' : ''));
+  }
+  if (D.cctv && !D.cctv.error) setSt('st-cctv', D.cctv.done ? 'ok' : 'todo', D.cctv.done ? '今日已檢查' : '今日尚未檢查');
+
+  if (Array.isArray(W.cleaning)) {
+    var wdn = cntDone(W.cleaning);
+    setSt('st-clean-w', wdn === W.cleaning.length ? 'ok' : (wdn ? 'part' : 'todo'), '本週 ' + wdn + '/' + W.cleaning.length + ' 班');
+  }
+  if (W.pest && !W.pest.error) setSt('st-pest', W.pest.done ? 'ok' : 'todo', W.pest.done ? '本週已完成' : '本週尚未檢核');
+  if (W.cctv && !W.cctv.error) setSt('st-cctv-w', W.cctv.done ? 'ok' : 'todo', W.cctv.done ? '本週已巡檢' : '本週尚未巡檢');
+
+  if (M.infection && !M.infection.error) setSt('st-infect', M.infection.done ? 'ok' : 'todo', M.infection.done ? '本月已完成' : '本月尚未檢核');
+  if (M.finance && !M.finance.error) {
+    var lm = +M.finance.lastMonth.split('/')[1];
+    setSt('st-finance', M.finance.lastDone ? 'ok' : 'todo', lm + ' 月對帳' + (M.finance.lastDone ? '已完成' : '尚未完成'));
+  }
+  renderMeetings(M.meetings);
+  renderMenu(M.menu);
+}
+
+function renderMeetings(m) {
+  var box = document.getElementById('meet-body');
+  if (!m || m.error) { box.innerHTML = '<span class="bad">' + esc(m && m.error ? m.error : '讀取失敗') + '</span>'; return; }
+  function line(label, list) {
+    if (!list.length) return '<div class="ln"><span class="k">' + label + '</span><span class="bad">本月尚無紀錄</span></div>';
+    return list.map(function (x) {
+      return '<div class="ln"><span class="k">' + label + '</span><span><span class="good">' + md(x.date) + ' 已發布</span>・簽收 ' +
+        x.done + '/' + x.total + '<br><span style="color:var(--ink-soft)">' + esc(x.title) + '</span></span></div>';
+    }).join('');
+  }
+  box.innerHTML = line('行政會議', m.admin) + line('教保會議', m.care) +
+    (m.sameDay ? '<div class="ln"><span class="bad">⚠️ 兩種會議在同一天，請確認是分開召開</span></div>' : '');
+}
+
+function renderMenu(m) {
+  var box = document.getElementById('menu-body');
+  if (!m || m.error) { box.innerHTML = '<span class="bad">' + esc(m && m.error ? m.error : '讀取失敗') + '</span>'; return; }
+  function line(mon, list, isNext) {
+    if (!list.length) {
+      var cls = (isNext && m.overdue) ? 'bad' : '';
+      var t = isNext ? (m.overdue ? '尚未發布（已過 ' + md(m.due) + '）' : '尚未發布（' + md(m.due) + ' 前公告）') : '尚無公告';
+      return '<div class="ln"><span class="k">' + mon + ' 月</span><span class="' + cls + '">' + t + '</span></div>';
+    }
+    return list.map(function (x) {
+      return '<div class="ln"><span class="k">' + mon + ' 月</span><span><span class="good">已發布</span>・點閱 ' + x.read + '/' + x.total +
+        (x.needSign ? '・回簽 ' + x.signed + '/' + x.total : '') + '<br><span style="color:var(--ink-soft)">' + esc(x.title) + '</span></span></div>';
+    }).join('');
+  }
+  box.innerHTML = line(m.nextMonth, m.next, true) + line(m.thisMonth, m.current, false);
+}
+
+/* ============================================================
+ * 餐點 48 小時留樣
+ * ============================================================ */
+var SAMPLE_MEALS = ['早點', '午餐', '午點'];
+var SAMPLE_MIN = { '單樣': 50, '混煮': 200 };
+function renderSampleForm() {
+  renderDeptChips('sample-dept-chips', 'sampleDept');
+  renderChips('sample-meal-chips', SAMPLE_MEALS, 'sampleMeal');
+  renderPick('sample-type', ['單樣', '混煮'], '', function () { return state.sampleType; },
+    function (v) { state.sampleType = v; updateSampleDeadline(); });
+  updateSampleDeadline();
+}
+function updateSampleDeadline() {
+  var el = document.getElementById('sample-calc');
+  var d = document.getElementById('sample-date').value, t = document.getElementById('sample-time').value || nowHm();
+  var w = Number(document.getElementById('sample-weight').value);
+  var msg = [];
+  if (state.sampleType) {
+    var min = SAMPLE_MIN[state.sampleType];
+    msg.push(state.sampleType + '至少 <b>' + min + 'g</b>' + (w ? (w >= min ? '　✓ 已達標' : '　<span style="color:var(--warn);font-weight:700">✗ 不足 ' + (min - w) + 'g</span>') : ''));
+  }
+  if (d) {
+    var p = d.split('-'), dt = new Date(+p[0], +p[1] - 1, +p[2]);
+    var dl;
+    if (dt.getDay() === 5) { dt.setDate(dt.getDate() + 3); dl = (dt.getMonth() + 1) + '/' + dt.getDate() + ' 12:00（週五延至週一中午）'; }
+    else { dt.setDate(dt.getDate() + 2); dl = (dt.getMonth() + 1) + '/' + dt.getDate() + ' ' + t; }
+    msg.push('保存至 <b>' + dl + '</b>');
+  }
+  el.innerHTML = msg.join('<br>');
+}
+async function submitSample() {
+  if (!state.sampleDept) { toast('請選擇部門', true); return; }
+  if (!state.sampleMeal) { toast('請選擇餐別', true); return; }
+  var dish = document.getElementById('sample-dish').value.trim();
+  if (!dish) { toast('請填寫菜色名稱', true); return; }
+  if (!state.sampleType) { toast('請選擇留樣類型', true); return; }
+  var w = Number(document.getElementById('sample-weight').value);
+  if (!w) { toast('請填寫留樣重量', true); return; }
+  if (w < SAMPLE_MIN[state.sampleType]) { toast(state.sampleType + '留樣至少 ' + SAMPLE_MIN[state.sampleType] + ' 公克，請補足', true); return; }
+  if (!state.photos.sample) { toast('請拍攝留樣磅重照片', true); return; }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'submitSample', dept: state.sampleDept,
+      date: fromInputDate(document.getElementById('sample-date').value),
+      time: document.getElementById('sample-time').value,
+      meal: state.sampleMeal, dish: dish, type: state.sampleType, weight: w, photo: state.photos.sample
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast('✅ ' + state.sampleMeal + '留樣已記錄<br>保存至 ' + res.deadline + (res.extended ? '（週五延至週一）' : ''));
+    afterSubmit();
+    state.sampleMeal = ''; state.sampleType = '';
+    document.getElementById('sample-dish').value = '';
+    document.getElementById('sample-weight').value = '';
+    document.getElementById('sample-time').value = nowHm();
+    clearPhoto('sample');
+    renderSampleForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * 照度與溫濕度
+ * ============================================================ */
+var LIGHT_WORK = ['備餐檯', '洗衫區'];
+function lightSites() {
+  var d = deptOf(state.lightDept);
+  return d ? d.classes.concat(LIGHT_WORK) : [];
+}
+function renderLightForm() {
+  renderDeptChips('light-dept-chips', 'lightDept', renderLightRows);
+  renderLightRows();
+}
+function renderLightRows() {
+  var wrap = document.getElementById('light-rows');
+  var sites = lightSites();
+  if (!sites.length) { wrap.innerHTML = '<span class="chips-empty">請先選擇部門</span>'; return; }
+  wrap.innerHTML = sites.map(function (s, i) {
+    var work = LIGHT_WORK.indexOf(s) !== -1;
+    return '<div class="lux-row" data-site="' + esc(s) + '">' +
+      '<div class="nm">' + esc(s) + '<small>' + (work ? '作業區・200 Lux 以上' : '活動室・350～700 Lux') + '</small></div>' +
+      '<input type="number" inputmode="decimal" placeholder="Lux" id="lux-' + i + '" data-work="' + (work ? 1 : 0) + '" oninput="checkLux(this)">' +
+      (work ? '' : '<div class="th"><input type="number" inputmode="decimal" placeholder="室溫 °C" id="tmp-' + i + '"><input type="number" inputmode="decimal" placeholder="濕度 %" id="hum-' + i + '"></div>') +
+      '</div>';
+  }).join('');
+}
+function checkLux(el) {
+  var v = el.value === '' ? null : Number(el.value);
+  var work = el.dataset.work === '1';
+  var bad = v != null && (work ? v < 200 : (v < 350 || v > 700));
+  el.classList.toggle('bad', !!bad);
+}
+async function submitLight() {
+  if (!state.lightDept) { toast('請選擇部門', true); return; }
+  var rows = [], bad = [];
+  lightSites().forEach(function (s, i) {
+    var lux = document.getElementById('lux-' + i).value;
+    if (lux === '') return;
+    var t = document.getElementById('tmp-' + i), h = document.getElementById('hum-' + i);
+    rows.push({ site: s, lux: lux, temp: t ? t.value : '', hum: h ? h.value : '' });
+    if (document.getElementById('lux-' + i).classList.contains('bad')) bad.push(s);
+  });
+  if (!rows.length) { toast('請至少填一個場所的照度', true); return; }
+  var fix = document.getElementById('light-fix').value.trim();
+  if (bad.length && !fix) { toast('照度未達標準（' + bad.join('、') + '），請填寫改善說明', true); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'submitLight', dept: state.lightDept, date: fromInputDate(document.getElementById('light-date').value), rows: rows, fix: fix });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast(res.abnormal ? '⚠️ 已記錄 ' + res.count + ' 處，未達標：<br>' + res.warnings.join('<br>') : '✅ 已記錄 ' + res.count + ' 處，照度皆符合標準', res.abnormal);
+    afterSubmit();
+    document.getElementById('light-fix').value = '';
+    renderLightRows();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * 廚房病媒防制（每週）
+ * ============================================================ */
+var PEST_ITEMS = [
+  { key: 'drain', label: '排水溝', opts: ['正常', '異常'], bad: '異常' },
+  { key: 'screen', label: '紗窗', opts: ['正常', '異常'], bad: '異常' },
+  { key: 'ratnet', label: '防鼠網', opts: ['正常', '異常'], bad: '異常' },
+  { key: 'lid', label: '廚餘桶加蓋', opts: ['正常', '異常'], bad: '異常' },
+  { key: 'clear', label: '廚餘每日清除', opts: ['正常', '異常'], bad: '異常' },
+  { key: 'roach', label: '蟑螂蹤跡', opts: ['無', '有'], bad: '有' },
+  { key: 'rat', label: '老鼠蹤跡', opts: ['無', '有'], bad: '有' },
+  { key: 'fly', label: '蒼蠅蹤跡', opts: ['無', '有'], bad: '有' }
+];
+function renderPestForm() {
+  renderDeptChips('pest-dept-chips', 'pestDept');
+  renderCheckRows('pest-rows', PEST_ITEMS, state.pest);
+}
+function pestAllOk() {
+  PEST_ITEMS.forEach(function (it) { state.pest[it.key] = it.opts[0]; });
+  renderCheckRows('pest-rows', PEST_ITEMS, state.pest);
+}
+async function submitPest() {
+  if (!state.pestDept) { toast('請選擇部門', true); return; }
+  var miss = PEST_ITEMS.filter(function (it) { return !state.pest[it.key]; });
+  if (miss.length) { toast('請勾選：' + miss.map(function (x) { return x.label; }).join('、'), true); return; }
+  var bad = PEST_ITEMS.filter(function (it) { return state.pest[it.key] === it.bad; });
+  var issue = document.getElementById('pest-issue').value.trim();
+  if (bad.length && !issue) { toast('有異常項目，請填寫異常說明／處置', true); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'submitPest', dept: state.pestDept, date: fromInputDate(document.getElementById('pest-date').value), checks: state.pest, issue: issue });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast(res.abnormal ? '⚠️ 已記錄，異常：<br>' + res.warnings.join('<br>') : '✅ 病媒防制檢核已記錄（全部正常）', res.abnormal);
+    afterSubmit();
+    state.pest = {};
+    document.getElementById('pest-issue').value = '';
+    renderPestForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * 感控月檢
+ * ============================================================ */
+var INF_ITEMS = [
+  { key: 'audit', label: '全園消毒抽查', opts: ['符合', '不符合'], bad: '不符合' },
+  { key: 'conc', label: '消毒液濃度正確', opts: ['符合', '不符合'], bad: '不符合' },
+  { key: 'wash', label: '洗手設施完備', opts: ['符合', '不符合'], bad: '不符合' }
+];
+function renderInfForm() {
+  renderDeptChips('inf-dept-chips', 'infDept');
+  renderCheckRows('inf-rows', INF_ITEMS, state.inf);
+}
+async function submitInfection() {
+  if (!state.infDept) { toast('請選擇部門', true); return; }
+  var month = document.getElementById('inf-month').value;
+  if (!month) { toast('請選擇月份', true); return; }
+  var miss = INF_ITEMS.filter(function (it) { return !state.inf[it.key]; });
+  if (miss.length) { toast('請勾選：' + miss.map(function (x) { return x.label; }).join('、'), true); return; }
+  var cases = document.getElementById('inf-cases').value;
+  if (cases === '') { toast('請填寫本月傳染病個案數（沒有請填 0）', true); return; }
+  var caseNote = document.getElementById('inf-case-note').value.trim();
+  if (Number(cases) > 0 && !caseNote) { toast('有傳染病個案，請填寫個案說明與隔離措施檢討', true); return; }
+  var improve = document.getElementById('inf-improve').value.trim();
+  if (INF_ITEMS.some(function (it) { return state.inf[it.key] === '不符合'; }) && !improve) { toast('有不符合項目，請填寫改善事項', true); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'submitInfection', dept: state.infDept, month: month, checks: state.inf, cases: cases, caseNote: caseNote, improve: improve });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast('✅ ' + month.replace('-', '/') + ' 感控月檢已記錄');
+    afterSubmit();
+    state.inf = {};
+    ['inf-cases', 'inf-case-note', 'inf-improve'].forEach(function (id) { document.getElementById(id).value = ''; });
+    renderInfForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * 收退費對帳（限園長／主任）
+ * ============================================================ */
+function renderFinForm() {
+  renderDeptChips('fin-dept-chips', 'finDept');
+  renderChips('fin-signed-chips', ['是', '否', '無退費'], 'finSigned');
+  renderChips('fin-sub-chips', ['已入帳', '部分入帳', '未入帳', '本月無補助'], 'finSub');
+  updateFinCalc();
+}
+function updateFinCalc() {
+  var due = document.getElementById('fin-due').value, paid = document.getElementById('fin-paid').value;
+  var el = document.getElementById('fin-calc');
+  if (due === '' || paid === '') { el.innerHTML = ''; return; }
+  var diff = Number(due) - Number(paid);
+  el.innerHTML = '差額 <b style="color:' + (diff ? 'var(--warn)' : 'var(--ok)') + '">' + diff.toLocaleString() + '</b> 元' + (diff ? '（請填差異說明）' : '（相符）');
+}
+async function submitFinance() {
+  if (!state.finDept) { toast('請選擇部門', true); return; }
+  var g = function (id) { return document.getElementById(id).value; };
+  if (!g('fin-month')) { toast('請選擇對帳月份', true); return; }
+  if (g('fin-kids') === '' || g('fin-due') === '' || g('fin-paid') === '') { toast('請填寫收托人數、應收與實收金額', true); return; }
+  if (!state.finSigned) { toast('請選擇退費收據是否已簽收', true); return; }
+  if (!state.finSub) { toast('請選擇補助款狀態', true); return; }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'submitFinance', dept: state.finDept, month: g('fin-month'),
+      kids: g('fin-kids'), due: g('fin-due'), paid: g('fin-paid'),
+      refundN: g('fin-refund-n'), refundAmt: g('fin-refund-amt'), refundSigned: state.finSigned,
+      subsidy: g('fin-subsidy'), subsidyStatus: state.finSub, note: g('fin-note').trim()
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast('✅ ' + g('fin-month').replace('-', '/') + ' 對帳已記錄' + (res.diff ? '（差額 ' + res.diff.toLocaleString() + ' 元）' : ''));
+    afterSubmit();
+    ['fin-kids', 'fin-due', 'fin-paid', 'fin-refund-n', 'fin-refund-amt', 'fin-subsidy', 'fin-note'].forEach(function (id) { document.getElementById(id).value = ''; });
+    state.finSigned = ''; state.finSub = '';
+    renderFinForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
+ * 監視器每週巡檢
+ * ============================================================ */
+var CCTVW_ITEMS = [
+  { key: 'lens', label: '鏡頭無遮擋', opts: ['是', '否'], bad: '否' },
+  { key: 'range', label: '拍攝範圍完整', opts: ['是', '否'], bad: '否' },
+  { key: 'clear', label: '畫面清晰', opts: ['是', '否'], bad: '否' },
+  { key: 'audio', label: '錄音功能正常', opts: ['是', '否'], bad: '否' },
+  { key: 'clock', label: '系統時間與標準時間同步', opts: ['是', '否'], bad: '否' },
+  { key: 'keep', label: '影音檔保存達 30 天', opts: ['是', '否'], bad: '否' }
+];
+function openCctv(tab) {
+  switchCctvTab(tab);
+  openForm('cctv');
+}
+function switchCctvTab(tab) {
+  state.cctvTab = tab;
+  document.getElementById('cctv-tab-daily').classList.toggle('active', tab === 'daily');
+  document.getElementById('cctv-tab-weekly').classList.toggle('active', tab === 'weekly');
+  document.getElementById('cctv-daily-wrap').style.display = tab === 'daily' ? 'block' : 'none';
+  document.getElementById('cctv-weekly-wrap').style.display = tab === 'weekly' ? 'block' : 'none';
+}
+function renderCctvWeeklyForm() {
+  renderDeptChips('cctvw-dept-chips', 'cctvwDept');
+  renderCheckRows('cctvw-rows', CCTVW_ITEMS, state.cctvw);
+  renderPick('cctvw-result', ['正常', '異常'], '異常', function () { return state.cctvwResult; },
+    function (v) { state.cctvwResult = v; });
+}
+function cctvwAllOk() {
+  CCTVW_ITEMS.forEach(function (it) { state.cctvw[it.key] = '是'; });
+  renderCheckRows('cctvw-rows', CCTVW_ITEMS, state.cctvw);
+}
+async function submitCctvWeekly() {
+  if (!state.cctvwDept) { toast('請選擇部門', true); return; }
+  var miss = CCTVW_ITEMS.filter(function (it) { return !state.cctvw[it.key]; });
+  if (miss.length) { toast('請勾選：' + miss.map(function (x) { return x.label; }).join('、'), true); return; }
+  var days = ['cctvw-s1', 'cctvw-s2', 'cctvw-s3'].map(function (id) { return document.getElementById(id).value; });
+  if (days.some(function (d) { return !d; })) { toast('請選 3 個抽查日期', true); return; }
+  if (!state.cctvwResult) { toast('請選擇抽查結果', true); return; }
+  var bad = CCTVW_ITEMS.some(function (it) { return state.cctvw[it.key] === '否'; }) || state.cctvwResult === '異常';
+  var issue = document.getElementById('cctvw-issue').value.trim();
+  if (bad && !issue) { toast('有異常項目，請填寫異常說明／處理情形', true); return; }
+  if (!state.photos.cctvw) { toast('請附上巡檢照片', true); return; }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'submitCctvWeekly', dept: state.cctvwDept, date: fromInputDate(document.getElementById('cctvw-date').value),
+      checks: state.cctvw, sampleDates: days.map(fromInputDate), sampleResult: state.cctvwResult, issue: issue, photo: state.photos.cctvw
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast(res.abnormal ? '⚠️ 巡檢已記錄，異常：<br>' + res.warnings.join('<br>') : '✅ 監視器每週巡檢已記錄', res.abnormal);
+    afterSubmit();
+    state.cctvw = {}; state.cctvwResult = '';
+    ['cctvw-s1', 'cctvw-s2', 'cctvw-s3', 'cctvw-issue'].forEach(function (id) { document.getElementById(id).value = ''; });
+    clearPhoto('cctvw');
+    renderCctvWeeklyForm();
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
@@ -1714,8 +2686,12 @@ async function loadRecent(form) {
   try {
     var res = await api({ action: 'getRecent', form: form, n: 10 });
     busy(false);
-    if (!res.ok) { toast('查詢失敗', true); return; }
-    var boxId = { fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent' }[form];
+    if (!res.ok) { toast(res.message || '查詢失敗', true); return; }
+    var boxId = {
+      fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
+      cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
+      infection: 'infection-recent', finance: 'finance-recent'
+    }[form];
     var box = document.getElementById(boxId);
     if (!res.rows.length) { box.style.display = 'block'; box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
     var hideCols = [];
@@ -1728,8 +2704,11 @@ async function loadRecent(form) {
       r.forEach(function (v, i) {
         if (hideCols.indexOf(i) !== -1) return;
         var cell = esc(v);
-        if (v === '正常') cell = '<span class="badge-ok">正常</span>';
-        if (v === '異常') cell = '<span class="badge-bad">異常</span>';
+        if (v === '正常' || v === '符合') cell = '<span class="badge-ok">' + v + '</span>';
+        if (v === '異常' || v === '不符合') cell = '<span class="badge-bad">' + v + '</span>';
+        if (String(res.headers[i]).indexOf('照片ID') !== -1 && v) {
+          cell = '<button class="mini-photo" onclick="openLightbox(event,\'' + esc(v) + '\')">📷</button>';
+        }
         html += '<td>' + cell + '</td>';
       });
       html += '</tr>';
