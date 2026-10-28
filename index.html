@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v3.0 | 星安 Design System -->
+<!-- fc-frontend v3.1 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -318,6 +318,26 @@ body.manage-mode .manage-box{display:block}
 .c-finance .bar{background:var(--ink)} .c-finance .emoji{background:var(--tint-cream)}
 .c-meet .bar{background:var(--bar-clean)} .c-meet .emoji{background:var(--tint-mint)}
 .c-menu .bar{background:var(--bar-toy)} .c-menu .emoji{background:var(--tint-cream)}
+.c-rotate .bar{background:var(--bar-toy)} .c-rotate .emoji{background:var(--tint-cream)}
+/* ===== v3.1 教玩具輪替 ===== */
+.rot-picked{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.rot-picked:empty{display:none}
+.rot-tag{display:inline-flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--ink);border:1px solid var(--line);border-radius:var(--radius-pill);padding:7px 12px;font-size:14px}
+.rot-tag .x{cursor:pointer;color:var(--accent);font-weight:700;padding:0 2px}
+.rot-tag.self{background:var(--tint-mint)}
+.rot-search{position:relative}
+.rot-list{max-height:220px;overflow-y:auto;border:1px solid var(--line);border-radius:14px;background:#fff;margin-top:6px;display:none}
+.rot-list.on{display:block}
+.rot-opt{display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px;cursor:pointer}
+.rot-opt:first-child{border-top:none}
+.rot-opt .no{color:var(--ink-soft);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rot-self{display:flex;gap:8px;margin-top:8px}
+.rot-self input{flex:1}
+.rot-self button{border:1px solid var(--accent);color:var(--accent);background:#fff;border-radius:var(--radius-pill);padding:0 16px;font-size:14px;font-family:var(--font-body);white-space:nowrap;cursor:pointer}
+.rot-photos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rot-photos .dropzone{padding:16px 8px;font-size:14px}
+.rot-by{font-size:13px;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:14px}
+.rot-by b{color:var(--ink)}
 .card.static{cursor:default}
 .card.static:active{transform:none;box-shadow:var(--shadow-sm)}
 .card .inner > div:nth-child(2){min-width:0;flex:1}
@@ -521,6 +541,20 @@ body.manage-mode .manage-box{display:block}
         <div class="en-name">Infection Control Review</div>
         <p>全園消毒抽查・消毒液濃度・洗手設施<br>傳染病個案統計與隔離檢討</p>
         <div class="st" id="st-infect"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-rotate" onclick="openRotation()">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🧸</div>
+      <div>
+        <h3>教玩具輪替紀錄</h3>
+        <div class="en-name">Toy &amp; Material Rotation</div>
+        <p>每班每月至少一次・撤下／新放入（含自製教具）<br>發展領域・使用觀察・更換前後照片</p>
+        <div class="st" id="st-rotate"></div>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -1074,6 +1108,62 @@ body.manage-mode .manage-box{display:block}
   <div class="panel" id="pest-recent" style="display:none"></div>
 </div>
 
+<!-- ===== 教玩具輪替紀錄 ===== -->
+<div class="form-view" id="view-rotation">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">教玩具輪替紀錄<span class="en-name">Toy &amp; Material Rotation</span></span>
+  </div>
+  <div class="panel">
+    <div class="rot-by">更換人員：<b id="rot-by-name"></b>（依您的 LINE 帳號自動帶入）</div>
+    <div class="field"><label>更換日期</label><input type="date" id="rot-date"></div>
+    <div class="field"><label>部門</label><div class="chips" id="rot-dept-chips"></div></div>
+    <div class="field"><label>班級</label><div class="chips" id="rot-class-chips"></div></div>
+    <div class="field">
+      <label>撤下的教玩具<span class="hint">從財產清冊挑，或加自製教具</span></label>
+      <div class="rot-picked" id="rot-out-picked"></div>
+      <div class="rot-search">
+        <input type="text" id="rot-out-q" placeholder="🔍 搜尋財產清冊：名稱或編號" autocomplete="off" oninput="rotSearch('out')" onfocus="rotSearch('out')">
+        <div class="rot-list" id="rot-out-list"></div>
+      </div>
+      <div class="rot-self"><input type="text" id="rot-out-self" maxlength="40" placeholder="自製教具名稱"><button type="button" onclick="rotAddSelf('out')">＋ 自製教具</button></div>
+    </div>
+    <div class="field">
+      <label>新放入的教玩具<span class="hint">從財產清冊挑，或加自製教具</span></label>
+      <div class="rot-picked" id="rot-in-picked"></div>
+      <div class="rot-search">
+        <input type="text" id="rot-in-q" placeholder="🔍 搜尋財產清冊：名稱或編號" autocomplete="off" oninput="rotSearch('in')" onfocus="rotSearch('in')">
+        <div class="rot-list" id="rot-in-list"></div>
+      </div>
+      <div class="rot-self"><input type="text" id="rot-in-self" maxlength="40" placeholder="自製教具名稱"><button type="button" onclick="rotAddSelf('in')">＋ 自製教具</button></div>
+    </div>
+    <div class="field"><label>對應發展領域<span class="hint">可複選</span></label><div class="chips" id="rot-domain-chips"></div></div>
+    <div class="field"><label>更換原因<span class="hint">可複選</span></label><div class="chips" id="rot-reason-chips"></div></div>
+    <div class="field">
+      <label>孩子的使用觀察<span class="hint">一兩句即可</span></label>
+      <textarea id="rot-obs" maxlength="300" placeholder="例如：近兩週多數孩子已能穩定套圈，興趣轉向抓握小物，改放置串珠與投入盒"></textarea>
+    </div>
+    <div class="field">
+      <label>教具櫃照片<span class="hint">更換前、更換後都要拍</span></label>
+      <div class="rot-photos">
+        <div>
+          <input type="file" id="pp-rotBefore" accept="image/*" style="display:none" onchange="pickPhoto('rotBefore', this)">
+          <button type="button" class="dropzone" onclick="document.getElementById('pp-rotBefore').click()">📷 更換前</button>
+          <img class="pp-preview" id="pv-rotBefore" alt="更換前照片預覽">
+        </div>
+        <div>
+          <input type="file" id="pp-rotAfter" accept="image/*" style="display:none" onchange="pickPhoto('rotAfter', this)">
+          <button type="button" class="dropzone" onclick="document.getElementById('pp-rotAfter').click()">📷 更換後</button>
+          <img class="pp-preview" id="pv-rotAfter" alt="更換後照片預覽">
+        </div>
+      </div>
+    </div>
+    <button class="submit-btn" onclick="submitRotation()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('rotation')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="rotation-recent" style="display:none"></div>
+</div>
+
 <!-- ===== 感控月檢 ===== -->
 <div class="form-view" id="view-infection">
   <div class="back-bar">
@@ -1148,11 +1238,12 @@ body.manage-mode .manage-box{display:block}
 /* ============================================================
  * 星安表格中心 前端 v3.0
  * v3.0：托嬰中心每日／每週／每月紀錄（首頁三區＋托嬰部完成度）
+ * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
  *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
  *   唯讀：行政／教保會議（園務簽核）、下月菜單（托嬰日誌公告）
  * ============================================================ */
-var FRONTEND_VERSION = 'v3.0';
+var FRONTEND_VERSION = 'v3.1';
 var COMP_DEPT = '托嬰部'; // 首頁完成度顯示的部門
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
@@ -1175,6 +1266,7 @@ var state = {
   cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
   sampleDept: '', sampleMeal: '', sampleType: '', lightDept: '', pestDept: '', pest: {},
   infDept: '', inf: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
+  rotDept: '', rotClass: '', rotOut: [], rotIn: [], rotDomains: [], rotReasons: [], rotAssets: null,
   lastActivity: Date.now()
 };
 
@@ -2290,6 +2382,7 @@ async function loadCompliance() {
     state.comp = res;
     state.compDirty = false;
     renderCompliance(res);
+    loadRotationStatus();
   } catch (e) {
     document.getElementById('comp-note').textContent = '進度讀取失敗，請下拉重新整理';
   }
@@ -2679,18 +2772,148 @@ async function submitCctvWeekly() {
 }
 
 /* ============================================================
+ * 教玩具輪替紀錄（每班每月至少一次）
+ * ============================================================ */
+var ROT_DOMAINS = ['粗大動作', '精細動作', '感官', '語言', '認知', '社會情緒'];
+var ROT_REASONS = ['依孩子發展階段', '孩子興趣轉移', '季節或主題', '損壞汰換'];
+var ROT_SKIP = ['公共區域'];
+async function openRotation() {
+  if (!state.rotDept) state.rotDept = defaultDept();
+  if (!document.getElementById('rot-date').value) document.getElementById('rot-date').value = toInputDate('');
+  document.getElementById('rot-by-name').textContent = state.user ? state.user.name : '';
+  renderRotationForm();
+  openForm('rotation');
+  if (!state.rotAssets) {
+    try {
+      var res = await api({ action: 'assetList' });
+      state.rotAssets = res.ok ? (res.assets || []).filter(function (a) {
+        return a.cat === '教玩具' && String(a.hidden).trim() !== '是' && !/報廢|遺失/.test(a.status || '');
+      }) : [];
+    } catch (e) { state.rotAssets = []; }
+  }
+}
+function renderRotationForm() {
+  renderDeptChips('rot-dept-chips', 'rotDept', function () { state.rotClass = ''; renderRotClasses(); });
+  renderRotClasses();
+  renderMulti('rot-domain-chips', ROT_DOMAINS, state.rotDomains);
+  renderMulti('rot-reason-chips', ROT_REASONS, state.rotReasons);
+  renderRotPicked('out'); renderRotPicked('in');
+}
+function renderRotClasses() {
+  var d = deptOf(state.rotDept);
+  var wrap = document.getElementById('rot-class-chips');
+  if (!d || !d.classes.length) { wrap.innerHTML = '<span class="chips-empty">請先選擇部門</span>'; return; }
+  renderChips('rot-class-chips', d.classes, 'rotClass');
+}
+function renderMulti(elId, opts, arr) {
+  var wrap = document.getElementById(elId);
+  wrap.innerHTML = '';
+  opts.forEach(function (o) {
+    wrap.appendChild(chipBtn(o, arr.indexOf(o) !== -1, function (v) {
+      var i = arr.indexOf(v); if (i === -1) arr.push(v); else arr.splice(i, 1);
+      renderMulti(elId, opts, arr);
+    }));
+  });
+}
+function rotArr(side) { return side === 'out' ? state.rotOut : state.rotIn; }
+function rotKey(it) { return it.self ? 'S:' + it.name : 'A:' + it.no + ':' + it.name; }
+function renderRotPicked(side) {
+  var box = document.getElementById('rot-' + side + '-picked');
+  box.innerHTML = rotArr(side).map(function (it, i) {
+    return '<span class="rot-tag' + (it.self ? ' self' : '') + '">' + (it.no ? '<span style="color:var(--ink-soft);font-size:12px">' + esc(it.no) + '</span>' : '') +
+      esc(it.name) + (it.self ? '（自製）' : '') + '<span class="x" onclick="rotRemove(\'' + side + '\',' + i + ')">✕</span></span>';
+  }).join('');
+}
+function rotRemove(side, i) { rotArr(side).splice(i, 1); renderRotPicked(side); }
+function rotAdd(side, it) {
+  var arr = rotArr(side);
+  if (arr.length >= 20) { toast('一次最多 20 項', true); return; }
+  if (arr.some(function (x) { return rotKey(x) === rotKey(it); })) { toast('已經選過了', true); return; }
+  arr.push(it); renderRotPicked(side);
+}
+function rotSearch(side) {
+  var list = document.getElementById('rot-' + side + '-list');
+  var q = document.getElementById('rot-' + side + '-q').value.trim().toLowerCase();
+  if (!state.rotAssets) { list.className = 'rot-list on'; list.innerHTML = '<div class="rot-opt">財產清冊載入中…</div>'; return; }
+  var hits = state.rotAssets.filter(function (a) { return !q || (a.name + ' ' + a.no + ' ' + (a.keeper || '')).toLowerCase().indexOf(q) !== -1; }).slice(0, 40);
+  if (!hits.length) { list.className = 'rot-list on'; list.innerHTML = '<div class="rot-opt" style="color:var(--ink-soft)">清冊找不到，可用下方「＋ 自製教具」或先到財產清冊登錄</div>'; return; }
+  list.className = 'rot-list on';
+  list.innerHTML = hits.map(function (a) {
+    var idx = state.rotAssets.indexOf(a);
+    return '<div class="rot-opt" onclick="rotPickAsset(\'' + side + '\',' + idx + ')"><span>' + esc(a.name) + (a.keeper ? '<span class="no">・' + esc(a.keeper) + '</span>' : '') + '</span><span class="no">' + esc(a.no) + '</span></div>';
+  }).join('');
+}
+function rotPickAsset(side, idx) {
+  var a = state.rotAssets[idx];
+  rotAdd(side, { no: a.no, name: a.name });
+  document.getElementById('rot-' + side + '-q').value = '';
+  document.getElementById('rot-' + side + '-list').className = 'rot-list';
+}
+function rotAddSelf(side) {
+  var inp = document.getElementById('rot-' + side + '-self');
+  var v = inp.value.trim();
+  if (!v) { toast('請輸入自製教具名稱', true); return; }
+  rotAdd(side, { self: true, name: v });
+  inp.value = '';
+}
+document.addEventListener('click', function (e) {
+  ['out', 'in'].forEach(function (side) {
+    var wrap = document.getElementById('rot-' + side + '-list');
+    if (wrap && !wrap.parentElement.contains(e.target)) wrap.className = 'rot-list';
+  });
+});
+async function submitRotation() {
+  if (!state.rotDept) { toast('請選擇部門', true); return; }
+  if (!state.rotClass) { toast('請選擇班級', true); return; }
+  if (!state.rotOut.length) { toast('請至少選一項撤下的教玩具', true); return; }
+  if (!state.rotIn.length) { toast('請至少選一項新放入的教玩具', true); return; }
+  if (!state.rotDomains.length) { toast('請勾選對應發展領域', true); return; }
+  if (!state.rotReasons.length) { toast('請選擇更換原因', true); return; }
+  var obs = document.getElementById('rot-obs').value.trim();
+  if (!obs) { toast('請寫一兩句孩子的使用觀察', true); return; }
+  if (!state.photos.rotBefore) { toast('請拍更換前的教具櫃照片', true); return; }
+  if (!state.photos.rotAfter) { toast('請拍更換後的教具櫃照片', true); return; }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'toyRotation', op: 'submit', dept: state.rotDept, cls: state.rotClass,
+      date: fromInputDate(document.getElementById('rot-date').value),
+      removed: state.rotOut, added: state.rotIn, domains: state.rotDomains, reasons: state.rotReasons,
+      observation: obs, photoBefore: state.photos.rotBefore, photoAfter: state.photos.rotAfter
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast('✅ ' + res.cls + ' 教玩具輪替已記錄（' + esc(res.by) + '）');
+    afterSubmit();
+    state.rotOut = []; state.rotIn = []; state.rotDomains = []; state.rotReasons = [];
+    document.getElementById('rot-obs').value = '';
+    clearPhoto('rotBefore'); clearPhoto('rotAfter');
+    renderRotationForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+async function loadRotationStatus() {
+  try {
+    var r = await api({ action: 'toyRotation', op: 'status', dept: COMP_DEPT });
+    if (!r.ok) return;
+    var n = r.classes.length, d = cntDone(r.classes);
+    var miss = r.classes.filter(function (x) { return !x.done; }).map(function (x) { return x.cls; });
+    setSt('st-rotate', n && d === n ? 'ok' : (d ? 'part' : 'todo'), '本月 ' + d + '/' + n + ' 班' + (miss.length ? '・未填：' + miss.join('、') : ' 全部完成'));
+  } catch (e) { }
+}
+
+/* ============================================================
  * 近期紀錄
  * ============================================================ */
 async function loadRecent(form) {
   busy(true);
   try {
-    var res = await api({ action: 'getRecent', form: form, n: 10 });
+    var res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 }) : await api({ action: 'getRecent', form: form, n: 10 });
     busy(false);
     if (!res.ok) { toast(res.message || '查詢失敗', true); return; }
     var boxId = {
       fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
       cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
-      infection: 'infection-recent', finance: 'finance-recent'
+      infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent'
     }[form];
     var box = document.getElementById(boxId);
     if (!res.rows.length) { box.style.display = 'block'; box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
