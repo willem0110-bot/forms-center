@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v3.1 | 星安 Design System -->
+<!-- fc-frontend v3.2 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -319,6 +319,7 @@ body.manage-mode .manage-box{display:block}
 .c-meet .bar{background:var(--bar-clean)} .c-meet .emoji{background:var(--tint-mint)}
 .c-menu .bar{background:var(--bar-toy)} .c-menu .emoji{background:var(--tint-cream)}
 .c-rotate .bar{background:var(--bar-toy)} .c-rotate .emoji{background:var(--tint-cream)}
+.c-firstaid .bar{background:var(--accent)} .c-firstaid .emoji{background:var(--accent-soft)}
 /* ===== v3.1 教玩具輪替 ===== */
 .rot-picked{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
 .rot-picked:empty{display:none}
@@ -555,6 +556,20 @@ body.manage-mode .manage-box{display:block}
         <div class="en-name">Toy &amp; Material Rotation</div>
         <p>每班每月至少一次・撤下／新放入（含自製教具）<br>發展領域・使用觀察・更換前後照片</p>
         <div class="st" id="st-rotate"></div>
+      </div>
+      <div class="arrow">→</div>
+    </div>
+  </div>
+
+  <div class="card c-firstaid" onclick="openFirstAid()">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🩹</div>
+      <div>
+        <h3>急救箱耗材檢核</h3>
+        <div class="en-name">First-Aid Kit Monthly Check</div>
+        <p>15 項耗材有／缺・效期・補充處置<br>急救箱內容照片必附（訪視 衛_9・稽查 6-3）</p>
+        <div class="st" id="st-firstaid"></div>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -1108,6 +1123,43 @@ body.manage-mode .manage-box{display:block}
   <div class="panel" id="pest-recent" style="display:none"></div>
 </div>
 
+<!-- ===== 急救箱耗材檢核（每月） ===== -->
+<div class="form-view" id="view-firstaid">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">急救箱耗材檢核<span class="en-name">First-Aid Kit Check</span></span>
+  </div>
+  <div class="panel">
+    <div class="rot-by">檢核人員：<b id="fa-by-name"></b>（依您的 LINE 帳號自動帶入）</div>
+    <div class="field"><label>月份</label><input type="month" id="fa-month"></div>
+    <div class="field"><label>檢核日期</label><input type="date" id="fa-date"></div>
+    <div class="field"><label>部門</label><div class="chips" id="fa-dept-chips"></div></div>
+    <div class="field"><label>急救箱位置<span class="hint">例如：托嬰部辦公室、2F 走廊</span></label><input type="text" id="fa-location" maxlength="40" placeholder="托嬰部辦公室"></div>
+    <div class="field">
+      <label>15 項耗材<span class="hint">缺＝數量不足或已過期</span></label>
+      <button type="button" class="secondary-btn" style="margin:0 0 8px" onclick="faAllOk()">✓ 全部齊全</button>
+      <div id="fa-rows"></div>
+    </div>
+    <div class="field">
+      <label>最近效期<span class="hint">箱內最早到期品項的效期，選填</span></label>
+      <input type="date" id="fa-expiry">
+    </div>
+    <div class="field">
+      <label>補充／處置說明<span class="hint">有「缺」時必填</span></label>
+      <textarea id="fa-note" maxlength="300" placeholder="例如：生理食鹽水 11/3 過期已更換；OK 繃剩 5 片，已請購 2 盒"></textarea>
+    </div>
+    <div class="field">
+      <label>急救箱內容照片<span class="hint">必填・打開蓋子拍全貌</span></label>
+      <input type="file" id="pp-firstaid" accept="image/*" style="display:none" onchange="pickPhoto('firstaid', this)">
+      <button type="button" class="dropzone" onclick="document.getElementById('pp-firstaid').click()">📷 拍照／選擇照片</button>
+      <img class="pp-preview" id="pv-firstaid" alt="急救箱照片預覽">
+    </div>
+    <button class="submit-btn" onclick="submitFirstAid()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('firstaid')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="firstaid-recent" style="display:none"></div>
+</div>
+
 <!-- ===== 教玩具輪替紀錄 ===== -->
 <div class="form-view" id="view-rotation">
   <div class="back-bar">
@@ -1239,11 +1291,12 @@ body.manage-mode .manage-box{display:block}
  * 星安表格中心 前端 v3.0
  * v3.0：托嬰中心每日／每週／每月紀錄（首頁三區＋托嬰部完成度）
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
+ * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
  *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
  *   唯讀：行政／教保會議（園務簽核）、下月菜單（托嬰日誌公告）
  * ============================================================ */
-var FRONTEND_VERSION = 'v3.1';
+var FRONTEND_VERSION = 'v3.2';
 var COMP_DEPT = '托嬰部'; // 首頁完成度顯示的部門
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
@@ -1265,7 +1318,7 @@ var state = {
   fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['500ppm', '1000ppm'], kitchen: '廚房',
   cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
   sampleDept: '', sampleMeal: '', sampleType: '', lightDept: '', pestDept: '', pest: {},
-  infDept: '', inf: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
+  infDept: '', inf: {}, faDept: '', fa: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
   rotDept: '', rotClass: '', rotOut: [], rotIn: [], rotDomains: [], rotReasons: [], rotAssets: null,
   lastActivity: Date.now()
 };
@@ -1348,10 +1401,12 @@ function renderApp(today) {
   setCctvTimeNow();
   document.getElementById('sample-time').value = nowHm();
   document.getElementById('inf-month').value = ymInput(0);
+  document.getElementById('fa-month').value = ymInput(0);
+  document.getElementById('fa-date').value = toInputDate('');
   document.getElementById('fin-month').value = ymInput(-1);
   state.fridgeShift = new Date().getHours() < 12 ? '上午' : '下午';
   var dd = defaultDept();
-  state.sampleDept = state.lightDept = state.pestDept = state.infDept = state.finDept = state.cctvwDept = dd;
+  state.sampleDept = state.lightDept = state.pestDept = state.infDept = state.faDept = state.finDept = state.cctvwDept = dd;
   if (state.user.canManageClass) document.getElementById('card-finance').style.display = 'block';
   initFridgeExport();
   initAssetDropzone();
@@ -1363,6 +1418,7 @@ function renderApp(today) {
   renderLightForm();
   renderPestForm();
   renderInfForm();
+  renderFaForm();
   renderFinForm();
   renderCctvWeeklyForm();
   loadCompliance();
@@ -2383,6 +2439,7 @@ async function loadCompliance() {
     state.compDirty = false;
     renderCompliance(res);
     loadRotationStatus();
+    loadFirstAidStatus();
   } catch (e) {
     document.getElementById('comp-note').textContent = '進度讀取失敗，請下拉重新整理';
   }
@@ -2902,18 +2959,83 @@ async function loadRotationStatus() {
 }
 
 /* ============================================================
+ * 急救箱耗材檢核（每月；v3.2）
+ * 後端：FirstAid.gs → action 'firstAid'，op submit / status / recent；分頁 FirstAid_Check
+ * ============================================================ */
+var FA_ITEMS = ['體溫計', '無菌紗布', 'OK 繃', '繃帶', '三角巾', '棉花棒', '生理食鹽水', '優碘／消毒液', '剪刀', '鑷子', '醫用膠帶', '冰敷袋', '一次性手套', '口罩', '急救手冊／緊急聯絡表']
+  .map(function (n, i) { return { key: 'i' + (i + 1), label: n, opts: ['有', '缺'], bad: '缺' }; });
+function openFirstAid() {
+  if (!state.faDept) state.faDept = defaultDept();
+  document.getElementById('fa-by-name').textContent = state.user ? state.user.name : '';
+  if (!document.getElementById('fa-month').value) document.getElementById('fa-month').value = ymInput(0);
+  if (!document.getElementById('fa-date').value) document.getElementById('fa-date').value = toInputDate('');
+  renderFaForm();
+  openForm('firstaid');
+}
+function renderFaForm() {
+  renderDeptChips('fa-dept-chips', 'faDept');
+  renderCheckRows('fa-rows', FA_ITEMS, state.fa);
+}
+function faAllOk() {
+  FA_ITEMS.forEach(function (it) { state.fa[it.key] = '有'; });
+  renderCheckRows('fa-rows', FA_ITEMS, state.fa);
+}
+async function submitFirstAid() {
+  if (!state.faDept) { toast('請選擇部門', true); return; }
+  var month = document.getElementById('fa-month').value;
+  if (!month) { toast('請選擇月份', true); return; }
+  var date = fromInputDate(document.getElementById('fa-date').value);
+  if (!date) { toast('請選擇檢核日期', true); return; }
+  var location = document.getElementById('fa-location').value.trim();
+  if (!location) { toast('請填寫急救箱位置', true); return; }
+  var miss = FA_ITEMS.filter(function (it) { return !state.fa[it.key]; });
+  if (miss.length) { toast('請勾選：' + miss.map(function (x) { return x.label; }).join('、'), true); return; }
+  var lack = FA_ITEMS.filter(function (it) { return state.fa[it.key] === '缺'; }).map(function (it) { return it.label; });
+  var note = document.getElementById('fa-note').value.trim();
+  if (lack.length && !note) { toast('有缺的項目，請填寫補充／處置說明', true); return; }
+  if (!state.photos.firstaid) { toast('請拍急救箱內容照片', true); return; }
+  var checks = {};
+  FA_ITEMS.forEach(function (it) { checks[it.label] = state.fa[it.key]; });
+  busy(true);
+  try {
+    var res = await api({
+      action: 'firstAid', op: 'submit', dept: state.faDept, month: month, date: date, location: location,
+      checks: checks, expiry: fromInputDate(document.getElementById('fa-expiry').value), note: note, photo: state.photos.firstaid
+    });
+    busy(false);
+    if (!res.ok) { toast(res.message || '送出失敗', true); return; }
+    toast(lack.length ? '⚠️ 已記錄，缺：' + lack.join('、') : '✅ ' + month.replace('-', '/') + ' 急救箱檢核已記錄（15 項齊全）', !!lack.length);
+    afterSubmit();
+    state.fa = {};
+    ['fa-location', 'fa-note', 'fa-expiry'].forEach(function (id) { document.getElementById(id).value = ''; });
+    clearPhoto('firstaid');
+    renderFaForm();
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+async function loadFirstAidStatus() {
+  try {
+    var r = await api({ action: 'firstAid', op: 'status', dept: COMP_DEPT });
+    if (!r.ok) return;
+    setSt('st-firstaid', r.done ? (r.lack ? 'part' : 'ok') : 'todo',
+      r.done ? ('本月已檢核' + (r.lack ? '・缺 ' + r.lack + ' 項' : '・15 項齊全')) : '本月尚未檢核');
+  } catch (e) { }
+}
+
+/* ============================================================
  * 近期紀錄
  * ============================================================ */
 async function loadRecent(form) {
   busy(true);
   try {
-    var res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 }) : await api({ action: 'getRecent', form: form, n: 10 });
+    var res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 })
+      : form === 'firstaid' ? await api({ action: 'firstAid', op: 'recent', n: 10 })
+      : await api({ action: 'getRecent', form: form, n: 10 });
     busy(false);
     if (!res.ok) { toast(res.message || '查詢失敗', true); return; }
     var boxId = {
       fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
       cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
-      infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent'
+      infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent'
     }[form];
     var box = document.getElementById(boxId);
     if (!res.rows.length) { box.style.display = 'block'; box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
