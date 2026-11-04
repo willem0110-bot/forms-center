@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v3.4 | 星安 Design System -->
+<!-- fc-frontend v3.4.1 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1318,7 +1318,7 @@ body.manage-mode .manage-box{display:block}
  *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
  *   唯讀：行政／教保會議（園務簽核）、下月菜單（托嬰日誌公告）
  * ============================================================ */
-var FRONTEND_VERSION = 'v3.4';
+var FRONTEND_VERSION = 'v3.4.1';
 var COMP_DEPT = '托嬰部'; // 首頁完成度顯示的部門
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
@@ -3008,6 +3008,7 @@ function faReset() {
   FA_ITEMS.forEach(function (it) { state.faB[it.key] = [{ qty: '', exp: '' }]; });
 }
 function renderFaForm() {
+  if (!state.faB) faReset(); // App 初始化時就會呼叫，批次資料要先備妥
   renderDeptChips('fa-dept-chips', 'faDept');
   var wrap = document.getElementById('fa-rows');
   wrap.innerHTML = '';
