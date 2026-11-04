@@ -1370,7 +1370,7 @@ async function init() {
     state.assetCats = res.assetCategories || [];
     state.milkOpts = res.milkOpts || [];
     if (res.shifts) state.shifts = res.shifts;
-    // v3.4：消毒水濃度選項以前端為準（不吃後端 concOpts）
+    if (res.concOpts) state.concOpts = res.concOpts; // 後端 CONC_OPTS 為準（送出時後端也用同一份檢查）
     if (res.kitchen) state.kitchen = res.kitchen;
     renderApp(res.today);
     startIdleWatch();
