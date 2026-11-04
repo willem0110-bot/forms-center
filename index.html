@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>星安表格中心</title>
-<!-- fc-frontend v3.3 | 星安 Design System -->
+<!-- fc-frontend v3.4 | 星安 Design System -->
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1312,12 +1312,13 @@ body.manage-mode .manage-box{display:block}
  * v3.0：托嬰中心每日／每週／每月紀錄（首頁三區＋托嬰部完成度）
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
+ * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
  *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
  *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
  *   唯讀：行政／教保會議（園務簽核）、下月菜單（托嬰日誌公告）
  * ============================================================ */
-var FRONTEND_VERSION = 'v3.3';
+var FRONTEND_VERSION = 'v3.4';
 var COMP_DEPT = '托嬰部'; // 首頁完成度顯示的部門
 var LIFF_ID = '2009933933-IbeAZQgL';
 var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
@@ -1336,7 +1337,7 @@ var state = {
   assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '', showHidden: false,
   editOrig: null, editPhotoId: '', removePhoto: false,
   cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '無',
-  fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['500ppm', '1000ppm'], kitchen: '廚房',
+  fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['漂白水 1000ppm', '漂白水 5000ppm', '次氯酸水 中濃度 100ppm'], kitchen: '廚房',
   cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
   sampleDept: '', sampleMeal: '', sampleType: '', lightDept: '', pestDept: '', pest: {},
   infDept: '', inf: {}, faDept: '', fa: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
@@ -1369,7 +1370,7 @@ async function init() {
     state.assetCats = res.assetCategories || [];
     state.milkOpts = res.milkOpts || [];
     if (res.shifts) state.shifts = res.shifts;
-    if (res.concOpts) state.concOpts = res.concOpts;
+    // v3.4：消毒水濃度選項以前端為準（不吃後端 concOpts）
     if (res.kitchen) state.kitchen = res.kitchen;
     renderApp(res.today);
     startIdleWatch();
