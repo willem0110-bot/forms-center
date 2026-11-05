@@ -453,7 +453,7 @@ body.manage-mode .manage-box{display:block}
       <div>
         <h3>環境清潔消毒記錄</h3>
         <div class="en-name">Daily Cleaning &amp; Disinfection</div>
-        <p>各班＋廚房每日打勾・消毒水濃度<br>廚房附三色砧板照片</p>
+        <p>各班＋廚房每日打勾・消毒水濃度</p>
         <div class="st" id="st-clean"></div>
       </div>
       <div class="arrow">→</div>
@@ -763,12 +763,6 @@ body.manage-mode .manage-box{display:block}
     <div class="field" id="uv-field" style="display:none">
       <label>紫外線燈開啟時數<span class="hint">本週合計（小時）・沒開請填 0</span></label>
       <input type="number" id="clean-uv" inputmode="decimal" min="0" step="0.5" placeholder="例如 3">
-    </div>
-    <div class="field" id="board-field" style="display:none">
-      <label>三色砧板照片<span class="hint">必填・紅（生）藍（熟）綠（果）分開擺放拍一張</span></label>
-      <input type="file" id="pp-board" accept="image/*" style="display:none" onchange="pickPhoto('board', this)">
-      <button type="button" class="dropzone" onclick="document.getElementById('pp-board').click()">📷 拍照／選擇照片</button>
-      <img class="pp-preview" id="pv-board" alt="砧板照片預覽">
     </div>
   </div>
   <div class="panel">
@@ -1314,6 +1308,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v3.6：清潔紀錄移除廚房三色砧板照片（不再必填、不再顯示上傳欄）
  * v3.5：冰箱近期紀錄／匯出依紀錄日期新→舊、不顯示紀錄時間與照片欄；清潔頻率選項「每日一次」改顯示「每日」
  *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
  *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
@@ -1756,8 +1751,6 @@ function renderCleanForm() {
   renderChips('conc-chips', state.concOpts, 'cleanConc');
   document.getElementById('conc-field').style.display = state.cleanForm === '每日' ? 'block' : 'none';
   document.getElementById('uv-field').style.display = state.cleanForm === '每週' ? 'block' : 'none';
-  document.getElementById('board-field').style.display =
-    (state.cleanForm === '每日' && state.selectedClass === state.kitchen) ? 'block' : 'none';
   document.getElementById('add-item-title').textContent =
     dept ? '新增清潔項目（' + dept.name + (state.selectedClass ? '・' + state.selectedClass : '') + '）' : '新增清潔項目（請先選擇部門）';
   document.getElementById('class-manage-box').style.display =
@@ -1947,7 +1940,6 @@ async function submitCleaning() {
   if (state.cleanForm === '每日' && !state.cleanConc) { toast('請選擇消毒水濃度', true); return; }
   var uv = document.getElementById('clean-uv').value;
   if (state.cleanForm === '每週' && state.cleanDept === '托嬰部' && uv === '') { toast('請填紫外線燈開啟時數（沒開請填 0）', true); return; }
-  if (isKitchen && !state.photos.board) { toast('廚房請拍三色砧板照片', true); return; }
   busy(true);
   try {
     var res = await api({
@@ -1958,7 +1950,7 @@ async function submitCleaning() {
       form: state.cleanForm,
       conc: state.cleanForm === '每日' ? state.cleanConc : '',
       uvHours: state.cleanForm === '每週' ? uv : '',
-      boardPhoto: isKitchen ? state.photos.board : '',
+      boardPhoto: '',
       checked: checked
     });
     busy(false);
@@ -1967,7 +1959,6 @@ async function submitCleaning() {
     afterSubmit();
     checkAll(false);
     document.getElementById('clean-uv').value = '';
-    clearPhoto('board');
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
