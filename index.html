@@ -1308,6 +1308,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v3.7：廚房清潔項目各部門共用（幼兒部廚房也帶出托嬰部建立的砧板／廚房環境項目）
  * v3.6：清潔紀錄移除廚房三色砧板照片（不再必填、不再顯示上傳欄）
  * v3.5：冰箱近期紀錄／匯出依紀錄日期新→舊、不顯示紀錄時間與照片欄；清潔頻率選項「每日一次」改顯示「每日」
  *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
@@ -1761,10 +1762,23 @@ function renderCleanForm() {
 }
 
 function deptItems() {
+  if (state.selectedClass === state.kitchen) {
+    // 廚房項目各部門共用：不分部門，同區域同名只列一次（本部門的優先）
+    var seen = {}, out = [];
+    var pool = state.items.filter(function (it) {
+      return it.cls === state.kitchen && (it.form || '每日') === state.cleanForm;
+    });
+    pool.sort(function (a, b) { return (a.dept === state.cleanDept ? 0 : 1) - (b.dept === state.cleanDept ? 0 : 1); });
+    pool.forEach(function (it) {
+      var k = it.area + '\u0001' + it.name;
+      if (seen[k]) return;
+      seen[k] = 1; out.push(it);
+    });
+    return state.items.filter(function (it) { return out.indexOf(it) !== -1; }); // 維持原排序
+  }
   return state.items.filter(function (it) {
     if (it.dept !== state.cleanDept) return false;
     if ((it.form || '每日') !== state.cleanForm) return false;
-    if (state.selectedClass === state.kitchen) return it.cls === state.kitchen; // 廚房只看廚房項目
     return !it.cls || it.cls === state.selectedClass; // 空白＝全班共用
   });
 }
