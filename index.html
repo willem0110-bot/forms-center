@@ -782,7 +782,7 @@ body.manage-mode .manage-box{display:block}
       <div class="row">
         <input type="text" id="ai-area" placeholder="區域（如：教室環境）" style="flex:1">
         <select id="ai-freq" style="width:110px">
-          <option>每日一次</option><option>每週一次</option><option>每月一次</option>
+          <option value="每日一次">每日</option><option>每週一次</option><option>每月一次</option>
         </select>
       </div>
       <div class="row">
@@ -1314,6 +1314,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v3.5：冰箱近期紀錄／匯出依紀錄日期新→舊、不顯示紀錄時間與照片欄；清潔頻率選項「每日一次」改顯示「每日」
  *   新表：留樣、照度溫濕度、病媒、感控月檢、收退費對帳、監視器每週巡檢
  *   升級：冰箱班次＋母乳專區、清潔每日／每週＋濃度＋砧板照片＋紫外線時數
  *   唯讀：行政／教保會議（園務簽核）、下月菜單（托嬰日誌公告）
@@ -1569,9 +1570,10 @@ async function exportFridge() {
     busy(false);
     if (!res.ok) { toast(res.message || '匯出失敗', true); return; }
     if (!res.rows.length) { toast('該月份沒有符合的紀錄', true); return; }
-    var aoa = [res.headers].concat(res.rows);
+    var fv = fridgeView(res.headers, res.rows);
+    var aoa = [fv.headers].concat(fv.rows);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = res.headers.map(function (h, i) {
+    ws['!cols'] = fv.headers.map(function (h, i) {
       var w = String(h).length * 2 + 2;
       aoa.forEach(function (r) { w = Math.max(w, String(r[i] == null ? '' : r[i]).length + 4); });
       return { wch: Math.min(w, 30) };
@@ -1586,6 +1588,36 @@ async function exportFridge() {
     busy(false);
     toast(String(e && e.message ? e.message : '匯出失敗，請再試一次'), true);
   }
+}
+
+/* 冰箱呈現：依紀錄日期新→舊（同日下午在前），不顯示紀錄時間與照片欄 */
+function fridgeDateKey(v) {
+  var m = String(v == null ? '' : v).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  return m ? Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]) : 0;
+}
+function fridgeView(headers, rows) {
+  var dateIdx = headers.indexOf('紀錄日期');
+  var shiftIdx = headers.indexOf('班次');
+  var keep = [];
+  headers.forEach(function (h, i) {
+    var t = String(h);
+    if (t === '紀錄時間' || t === '記錄時間' || t.indexOf('照片') !== -1) return;
+    keep.push(i);
+  });
+  var sorted = rows.map(function (r, i) { return { r: r, i: i }; });
+  if (dateIdx !== -1) sorted.sort(function (a, b) {
+    var d = fridgeDateKey(b.r[dateIdx]) - fridgeDateKey(a.r[dateIdx]);
+    if (d) return d;
+    if (shiftIdx !== -1) {
+      var sa = String(a.r[shiftIdx]) === '下午' ? 1 : 0, sb = String(b.r[shiftIdx]) === '下午' ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+    }
+    return a.i - b.i;
+  });
+  return {
+    headers: keep.map(function (i) { return headers[i]; }),
+    rows: sorted.map(function (o) { return keep.map(function (i) { return o.r[i]; }); })
+  };
 }
 
 function renderFridgeForm() {
@@ -1779,7 +1811,7 @@ function renderItems() {
       row.innerHTML =
         '<input type="checkbox" data-name="' + esc(it.name) + '" data-area="' + esc(it.area) + '" onchange="updateProgress()">' +
         '<span class="iname">' + esc(it.name) + '</span>' +
-        '<span class="ifreq">' + esc(it.freq) + '</span>' +
+        '<span class="ifreq">' + esc(freqLabel(it.freq)) + '</span>' +
         (it.cls ? '' : '<span class="ifreq">共用</span>') +
         '<span class="del" data-id="' + esc(it.id) + '" onclick="removeItem(event,\'' + esc(it.id) + '\',\'' + esc(it.name) + '\')">🗑</span>';
       block.appendChild(row);
@@ -1788,6 +1820,8 @@ function renderItems() {
   });
   updateProgress();
 }
+
+function freqLabel(f) { return String(f) === '每日一次' ? '每日' : f; }
 
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -3185,7 +3219,7 @@ async function loadRecent(form) {
   try {
     var res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 })
       : form === 'firstaid' ? await api({ action: 'firstAid', op: 'recent', n: 10 })
-      : await api({ action: 'getRecent', form: form, n: 10 });
+      : await api({ action: 'getRecent', form: form, n: form === 'fridge' ? 20 : 10 });
     busy(false);
     if (!res.ok) { toast(res.message || '查詢失敗', true); return; }
     var boxId = {
@@ -3194,6 +3228,7 @@ async function loadRecent(form) {
       infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent'
     }[form];
     var box = document.getElementById(boxId);
+    if (form === 'fridge') { var fvr = fridgeView(res.headers, res.rows); res.headers = fvr.headers; res.rows = fvr.rows; }
     if (!res.rows.length) { box.style.display = 'block'; box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
     var hideCols = [];
     res.headers.forEach(function (h, i) { if (String(h).indexOf('UID') !== -1 || h === '建立時間戳') hideCols.push(i); });
