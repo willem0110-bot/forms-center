@@ -1086,7 +1086,7 @@ body.manage-mode .manage-box{display:block}
     <div class="field"><label>部門</label><div class="chips" id="sample-dept-chips"></div></div>
     <div class="field"><label>餐別</label><div class="chips" id="sample-meal-chips"></div></div>
     <div class="field">
-      <label>菜色與留樣重量<span class="hint">一道菜一列・重量為公克</span></label>
+      <label>菜色與留樣重量<span class="hint">一道菜一列・每道至少 50 公克</span></label>
       <div id="sample-dishes"></div>
       <button type="button" class="secondary-btn" style="margin-top:4px" onclick="addSampleDish()">＋ 新增菜色</button>
       <div class="calc-line" id="sample-calc"></div>
@@ -1332,7 +1332,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
- * v4.1：留樣取消留樣類型；菜色後面直接填重量，可「＋新增菜色」多道一次送出（後端 Compliance.gs v1.2）
+ * v4.1：留樣取消留樣類型（每道菜至少 50g）；菜色後面直接填重量，可「＋新增菜色」多道一次送出（後端 Compliance.gs v1.2）
  * v4.0：近期紀錄可點 ✏️ 修改／刪除（填寫本人 7 天內、園長主任不限；標記刪除可復原；後端 Edit.gs）
  * v3.9：監視器影像管理改 定期／家長／公部門查閱；事由僅家長、公部門必填；查閱時段改日期＋起訖時間下拉
  * v3.8：監視器「每日檢查」改名「每週巡檢」並移到首頁每週區；舊每週巡檢區（CCTV_Weekly）關閉；首頁狀態改看本週有無紀錄
@@ -2675,6 +2675,7 @@ function renderMenu(m) {
  * 餐點 48 小時留樣
  * ============================================================ */
 var SAMPLE_MEALS = ['早點', '午餐', '午點'];
+var SAMPLE_MIN_EACH = 50; // 每道菜最低留樣重量（g），與後端 Compliance.gs 一致
 /* v4.1：取消留樣類型；同一餐別可登錄多道菜（一道菜一列：菜色＋重量），共用一張磅重照片 */
 function renderSampleForm() {
   renderDeptChips('sample-dept-chips', 'sampleDept');
@@ -2726,6 +2727,7 @@ async function submitSample() {
     if (!name && !w) continue;
     if (!name) { toast('第 ' + (i + 1) + ' 列請填寫菜色名稱', true); return; }
     if (!w || !(Number(w) > 0)) { toast('「' + name + '」請填寫留樣重量', true); return; }
+    if (Number(w) < SAMPLE_MIN_EACH) { toast('「' + name + '」留樣至少 ' + SAMPLE_MIN_EACH + ' 公克，目前 ' + w + ' 公克', true); return; }
     dishes.push({ dish: name, weight: Number(w) });
   }
   if (!dishes.length) { toast('請至少填一道菜色與重量', true); return; }
