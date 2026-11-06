@@ -390,6 +390,7 @@ body.manage-mode .manage-box{display:block}
 .fa-add{border:none;background:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;font-family:var(--font-body)}
 .fa-summary{font-size:13px;line-height:1.7;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-tile);padding:10px 14px;margin-top:6px}
 .field-row > input{flex:1;min-width:0;padding:10px 6px;font-size:14px}
+.field-row > select{flex:1;min-width:0}
 </style>
 </head>
 <body>
@@ -991,16 +992,20 @@ body.manage-mode .manage-box{display:block}
       <label>影像管理</label>
       <div class="chips" id="cctv-mgmt-chips"></div>
     </div>
-    <div id="cctv-mgmt-detail" style="display:none">
+    <div id="cctv-mgmt-detail">
       <div class="field">
         <label>查閱畫面／攝影機位置<span class="hint">必填</span></label>
         <input type="text" id="cctv-loc" placeholder="例如：2F小寶班 活動區鏡頭">
       </div>
       <div class="field">
-        <label>查閱時段<span class="hint">必填</span></label>
-        <input type="text" id="cctv-period" placeholder="例如：10/14 15:00–15:30">
+        <label>查閱時段<span class="hint">必填・日期＋起訖時間</span></label>
+        <input type="date" id="cctv-pdate">
+        <div class="field-row" style="margin-top:8px">
+          <select id="cctv-pstart"></select>
+          <select id="cctv-pend"></select>
+        </div>
       </div>
-      <div class="field">
+      <div class="field" id="cctv-reason-field">
         <label>事由及說明<span class="hint">必填</span></label>
         <textarea id="cctv-reason" placeholder="例如：家長申請調閱 10/14 15:00–15:30 畫面"></textarea>
       </div>
@@ -1294,6 +1299,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v3.9：監視器影像管理改 定期／家長／公部門查閱；事由僅家長、公部門必填；查閱時段改日期＋起訖時間下拉
  * v3.8：監視器「每日檢查」改名「每週巡檢」並移到首頁每週區；舊每週巡檢區（CCTV_Weekly）關閉；首頁狀態改看本週有無紀錄
  * v3.7：廚房清潔項目各部門共用（幼兒部廚房也帶出托嬰部建立的砧板／廚房環境項目）
  * v3.6：清潔紀錄移除廚房三色砧板照片（不再必填、不再顯示上傳欄）
@@ -1320,7 +1326,7 @@ var state = {
   cleanDept: '', selectedClass: '',
   assetCats: [], assetCat: '', assetFilter: '全部', assets: null, assetPhoto: '', showHidden: false,
   editOrig: null, editPhotoId: '', removePhoto: false,
-  cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '無',
+  cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '定期查閱',
   fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['漂白水 1000ppm', '漂白水 5000ppm', '次氯酸水 中濃度 100ppm'], kitchen: '廚房',
   cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
   sampleDept: '', sampleMeal: '', sampleType: '', lightDept: '', pestDept: '', pest: {},
@@ -2302,14 +2308,42 @@ function renderCctvForm() {
   renderYn('cctv-vid', 'cctvVid');
   var mWrap = document.getElementById('cctv-mgmt-chips');
   mWrap.innerHTML = '';
-  ['無', '查閱', '刪除'].forEach(function (m) {
+  CCTV_MGMT.forEach(function (m) {
     mWrap.appendChild(chipBtn(m, state.cctvMgmt === m, function (name) {
       state.cctvMgmt = name;
       renderCctvForm();
     }));
   });
-  document.getElementById('cctv-mgmt-detail').style.display =
-    state.cctvMgmt === '無' ? 'none' : 'block';
+  document.getElementById('cctv-reason-field').style.display = cctvNeedReason() ? 'block' : 'none';
+  initCctvPeriod();
+}
+
+/* 影像管理：定期／家長／公部門查閱；家長、公部門需填事由 */
+var CCTV_MGMT = ['定期查閱', '家長查閱', '公部門查閱'];
+function cctvNeedReason() { return state.cctvMgmt === '家長查閱' || state.cctvMgmt === '公部門查閱'; }
+function initCctvPeriod(force) {
+  var s = document.getElementById('cctv-pstart'), e = document.getElementById('cctv-pend');
+  if (!s.options.length) {
+    var opts = '<option value="">開始時間</option>';
+    for (var m = 0; m < 24 * 60; m += 30) {
+      var t = ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2);
+      opts += '<option value="' + t + '">' + t + '</option>';
+    }
+    s.innerHTML = opts;
+    e.innerHTML = opts.replace('開始時間', '結束時間');
+    s.onchange = function () {
+      if (s.value && (!e.value || e.value <= s.value)) e.selectedIndex = Math.min(s.selectedIndex + 1, e.options.length - 1);
+    };
+  }
+  var d = document.getElementById('cctv-pdate');
+  if (force || !d.value) d.value = document.getElementById('cctv-date').value;
+}
+function cctvPeriodText() {
+  var d = document.getElementById('cctv-pdate').value;
+  var a = document.getElementById('cctv-pstart').value, b = document.getElementById('cctv-pend').value;
+  if (!d || !a || !b) return '';
+  var p = d.split('-');
+  return (+p[1]) + '/' + (+p[2]) + ' ' + a + '–' + b;
 }
 
 function renderYn(elId, stateKey) {
@@ -2336,13 +2370,15 @@ async function submitCctv() {
   var abnormal = (state.cctvHost === '否' || state.cctvRec === '否' || state.cctvVid === '否');
   if (abnormal && !issue) { toast('有項目勾「否」，請填寫異常說明／處理情形', true); return; }
   var camLoc = document.getElementById('cctv-loc').value.trim();
-  var period = document.getElementById('cctv-period').value.trim();
-  var reason = document.getElementById('cctv-reason').value.trim();
-  if (state.cctvMgmt !== '無') {
-    if (!camLoc) { toast('請填寫查閱畫面／攝影機位置', true); return; }
-    if (!period) { toast('請填寫查閱時段', true); return; }
-    if (!reason) { toast('請填寫事由及說明', true); return; }
+  var reason = cctvNeedReason() ? document.getElementById('cctv-reason').value.trim() : '';
+  if (!state.cctvMgmt) { toast('請選擇影像管理類型', true); return; }
+  if (!camLoc) { toast('請填寫查閱畫面／攝影機位置', true); return; }
+  if (!document.getElementById('cctv-pdate').value || !document.getElementById('cctv-pstart').value || !document.getElementById('cctv-pend').value) {
+    toast('請選擇查閱日期與起訖時間', true); return;
   }
+  if (document.getElementById('cctv-pend').value <= document.getElementById('cctv-pstart').value) { toast('結束時間要晚於開始時間', true); return; }
+  var period = cctvPeriodText();
+  if (cctvNeedReason() && !reason) { toast(state.cctvMgmt + '請填寫事由及說明', true); return; }
   busy(true);
   try {
     var res = await api({
@@ -2365,15 +2401,16 @@ async function submitCctv() {
     if (res.abnormal) {
       toast('⚠️ ' + state.cctvDept + ' 已記錄，設備異常：<br>' + res.warnings.join('<br>') + '<br>請儘速安排檢修！', true);
     } else {
-      toast('✅ ' + state.cctvDept + ' 監視器紀錄已送出' + (res.mgmt !== '無' ? '（含影像' + res.mgmt + '稽核）' : ''));
+      toast('✅ ' + state.cctvDept + ' 監視器紀錄已送出' + '（' + state.cctvMgmt + '）');
     }
     afterSubmit();
-    state.cctvHost = ''; state.cctvRec = ''; state.cctvVid = ''; state.cctvMgmt = '無';
+    state.cctvHost = ''; state.cctvRec = ''; state.cctvVid = ''; state.cctvMgmt = '定期查閱';
     setCctvTimeNow();
-    ['cctv-issue', 'cctv-site', 'cctv-care', 'cctv-loc', 'cctv-period', 'cctv-reason', 'cctv-note'].forEach(function (id) {
+    ['cctv-issue', 'cctv-site', 'cctv-care', 'cctv-loc', 'cctv-reason', 'cctv-note', 'cctv-pstart', 'cctv-pend'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
     renderCctvForm();
+    initCctvPeriod(true);
   } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
