@@ -407,6 +407,10 @@ body.manage-mode .manage-box{display:block}
 .fa-summary{font-size:13px;line-height:1.7;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-tile);padding:10px 14px;margin-top:6px}
 .field-row > input{flex:1;min-width:0;padding:10px 6px;font-size:14px}
 .field-row > select{flex:1;min-width:0}
+.dish-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.dish-row .dr-name{flex:1;min-width:0}
+.dish-row .dr-w{width:96px;flex:none}
+.dish-row .dr-del{flex:none;width:36px;height:36px;border:1px solid var(--line);background:var(--card);border-radius:50%;cursor:pointer;color:var(--ink-soft);font-size:15px}
 </style>
 </head>
 <body>
@@ -1081,11 +1085,10 @@ body.manage-mode .manage-box{display:block}
     </div>
     <div class="field"><label>部門</label><div class="chips" id="sample-dept-chips"></div></div>
     <div class="field"><label>餐別</label><div class="chips" id="sample-meal-chips"></div></div>
-    <div class="field"><label>菜色名稱</label><input type="text" id="sample-dish" placeholder="例如：鮭魚蔬菜粥"></div>
-    <div class="field"><label>留樣類型</label><div class="opt-grid" id="sample-type"></div></div>
     <div class="field">
-      <label>留樣重量<span class="hint">公克</span></label>
-      <input type="number" id="sample-weight" inputmode="decimal" min="0" placeholder="磅秤顯示的重量" oninput="updateSampleDeadline()">
+      <label>菜色與留樣重量<span class="hint">一道菜一列・重量為公克</span></label>
+      <div id="sample-dishes"></div>
+      <button type="button" class="secondary-btn" style="margin-top:4px" onclick="addSampleDish()">＋ 新增菜色</button>
       <div class="calc-line" id="sample-calc"></div>
     </div>
     <div class="field">
@@ -1329,6 +1332,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v4.1：留樣取消留樣類型；菜色後面直接填重量，可「＋新增菜色」多道一次送出（後端 Compliance.gs v1.2）
  * v4.0：近期紀錄可點 ✏️ 修改／刪除（填寫本人 7 天內、園長主任不限；標記刪除可復原；後端 Edit.gs）
  * v3.9：監視器影像管理改 定期／家長／公部門查閱；事由僅家長、公部門必填；查閱時段改日期＋起訖時間下拉
  * v3.8：監視器「每日檢查」改名「每週巡檢」並移到首頁每週區；舊每週巡檢區（CCTV_Weekly）關閉；首頁狀態改看本週有無紀錄
@@ -1360,7 +1364,7 @@ var state = {
   cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '定期查閱',
   fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['漂白水 1000ppm', '漂白水 5000ppm', '次氯酸水 中濃度 100ppm'], kitchen: '廚房',
   cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
-  sampleDept: '', sampleMeal: '', sampleType: '', lightDept: '', pestDept: '', pest: {},
+  sampleDept: '', sampleMeal: '', sampleDishes: [{ dish: '', weight: '' }], lightDept: '', pestDept: '', pest: {},
   infDept: '', inf: {}, faDept: '', fa: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
   rotDept: '', rotClass: '', rotOut: [], rotIn: [], rotDomains: [], rotReasons: [], rotAssets: null,
   lastActivity: Date.now()
@@ -2671,23 +2675,39 @@ function renderMenu(m) {
  * 餐點 48 小時留樣
  * ============================================================ */
 var SAMPLE_MEALS = ['早點', '午餐', '午點'];
-var SAMPLE_MIN = { '單樣': 50, '混煮': 200 };
+/* v4.1：取消留樣類型；同一餐別可登錄多道菜（一道菜一列：菜色＋重量），共用一張磅重照片 */
 function renderSampleForm() {
   renderDeptChips('sample-dept-chips', 'sampleDept');
   renderChips('sample-meal-chips', SAMPLE_MEALS, 'sampleMeal');
-  renderPick('sample-type', ['單樣', '混煮'], '', function () { return state.sampleType; },
-    function (v) { state.sampleType = v; updateSampleDeadline(); });
+  renderSampleDishes();
   updateSampleDeadline();
+}
+function renderSampleDishes() {
+  var box = document.getElementById('sample-dishes');
+  var list = state.sampleDishes;
+  if (!list.length) list.push({ dish: '', weight: '' });
+  box.innerHTML = list.map(function (d, i) {
+    return '<div class="dish-row">' +
+      '<input type="text" class="dr-name" placeholder="' + (i === 0 ? '例如：鮭魚蔬菜粥' : '菜色名稱') + '" value="' + esc(d.dish) + '" oninput="state.sampleDishes[' + i + '].dish=this.value">' +
+      '<input type="number" class="dr-w" inputmode="decimal" min="0" placeholder="公克" value="' + esc(d.weight) + '" oninput="state.sampleDishes[' + i + '].weight=this.value">' +
+      (list.length > 1 ? '<button type="button" class="dr-del" onclick="removeSampleDish(' + i + ')" aria-label="移除">✕</button>' : '') +
+      '</div>';
+  }).join('');
+}
+function addSampleDish() {
+  state.sampleDishes.push({ dish: '', weight: '' });
+  renderSampleDishes();
+  var names = document.querySelectorAll('#sample-dishes .dr-name');
+  if (names.length) names[names.length - 1].focus();
+}
+function removeSampleDish(i) {
+  state.sampleDishes.splice(i, 1);
+  renderSampleDishes();
 }
 function updateSampleDeadline() {
   var el = document.getElementById('sample-calc');
   var d = document.getElementById('sample-date').value, t = document.getElementById('sample-time').value || nowHm();
-  var w = Number(document.getElementById('sample-weight').value);
   var msg = [];
-  if (state.sampleType) {
-    var min = SAMPLE_MIN[state.sampleType];
-    msg.push(state.sampleType + '至少 <b>' + min + 'g</b>' + (w ? (w >= min ? '　✓ 已達標' : '　<span style="color:var(--warn);font-weight:700">✗ 不足 ' + (min - w) + 'g</span>') : ''));
-  }
   if (d) {
     var p = d.split('-'), dt = new Date(+p[0], +p[1] - 1, +p[2]);
     var dl;
@@ -2700,12 +2720,15 @@ function updateSampleDeadline() {
 async function submitSample() {
   if (!state.sampleDept) { toast('請選擇部門', true); return; }
   if (!state.sampleMeal) { toast('請選擇餐別', true); return; }
-  var dish = document.getElementById('sample-dish').value.trim();
-  if (!dish) { toast('請填寫菜色名稱', true); return; }
-  if (!state.sampleType) { toast('請選擇留樣類型', true); return; }
-  var w = Number(document.getElementById('sample-weight').value);
-  if (!w) { toast('請填寫留樣重量', true); return; }
-  if (w < SAMPLE_MIN[state.sampleType]) { toast(state.sampleType + '留樣至少 ' + SAMPLE_MIN[state.sampleType] + ' 公克，請補足', true); return; }
+  var dishes = [];
+  for (var i = 0; i < state.sampleDishes.length; i++) {
+    var d = state.sampleDishes[i], name = String(d.dish || '').trim(), w = String(d.weight || '').trim();
+    if (!name && !w) continue;
+    if (!name) { toast('第 ' + (i + 1) + ' 列請填寫菜色名稱', true); return; }
+    if (!w || !(Number(w) > 0)) { toast('「' + name + '」請填寫留樣重量', true); return; }
+    dishes.push({ dish: name, weight: Number(w) });
+  }
+  if (!dishes.length) { toast('請至少填一道菜色與重量', true); return; }
   if (!state.photos.sample) { toast('請拍攝留樣磅重照片', true); return; }
   busy(true);
   try {
@@ -2713,15 +2736,13 @@ async function submitSample() {
       action: 'submitSample', dept: state.sampleDept,
       date: fromInputDate(document.getElementById('sample-date').value),
       time: document.getElementById('sample-time').value,
-      meal: state.sampleMeal, dish: dish, type: state.sampleType, weight: w, photo: state.photos.sample
+      meal: state.sampleMeal, dishes: dishes, photo: state.photos.sample
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
-    toast('✅ ' + state.sampleMeal + '留樣已記錄<br>保存至 ' + res.deadline + (res.extended ? '（週五延至週一）' : ''));
+    toast('✅ ' + state.sampleMeal + '留樣已記錄 ' + (res.count || dishes.length) + ' 道菜<br>保存至 ' + res.deadline + (res.extended ? '（週五延至週一）' : ''));
     afterSubmit();
-    state.sampleMeal = ''; state.sampleType = '';
-    document.getElementById('sample-dish').value = '';
-    document.getElementById('sample-weight').value = '';
+    state.sampleMeal = ''; state.sampleDishes = [{ dish: '', weight: '' }];
     document.getElementById('sample-time').value = nowHm();
     clearPhoto('sample');
     renderSampleForm();
