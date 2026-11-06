@@ -488,7 +488,7 @@ body.manage-mode .manage-box{display:block}
       <div>
         <h3>餐點 48 小時留樣</h3>
         <div class="en-name">Food Sample Retention</div>
-        <p>單樣 ≥ 50g・混煮 ≥ 200g・附磅重照片<br>週五留樣自動延到週一中午</p>
+        <p>每道菜 ≥ 50g・附留樣照片<br>週五留樣自動延到週一中午</p>
         <div class="st" id="st-sample"></div>
       </div>
       <div class="arrow">→</div>
@@ -1092,7 +1092,7 @@ body.manage-mode .manage-box{display:block}
       <div class="calc-line" id="sample-calc"></div>
     </div>
     <div class="field">
-      <label>磅重照片<span class="hint">必填・密封容器放在磅秤上拍一張</span></label>
+      <label>留樣照片<span class="hint">必填</span></label>
       <input type="file" id="pp-sample" accept="image/*" style="display:none" onchange="pickPhoto('sample', this)">
       <button type="button" class="dropzone" onclick="document.getElementById('pp-sample').click()">📷 拍照／選擇照片</button>
       <img class="pp-preview" id="pv-sample" alt="留樣照片預覽">
@@ -1332,6 +1332,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v4.2：留樣「磅重照片」改名「留樣照片」，拿掉拍攝說明；首頁卡片說明改每道菜 ≥ 50g
  * v4.1：留樣取消留樣類型（每道菜至少 50g）；菜色後面直接填重量，可「＋新增菜色」多道一次送出（後端 Compliance.gs v1.2）
  * v4.0：近期紀錄可點 ✏️ 修改／刪除（填寫本人 7 天內、園長主任不限；標記刪除可復原；後端 Edit.gs）
  * v3.9：監視器影像管理改 定期／家長／公部門查閱；事由僅家長、公部門必填；查閱時段改日期＋起訖時間下拉
@@ -2676,7 +2677,7 @@ function renderMenu(m) {
  * ============================================================ */
 var SAMPLE_MEALS = ['早點', '午餐', '午點'];
 var SAMPLE_MIN_EACH = 50; // 每道菜最低留樣重量（g），與後端 Compliance.gs 一致
-/* v4.1：取消留樣類型；同一餐別可登錄多道菜（一道菜一列：菜色＋重量），共用一張磅重照片 */
+/* v4.1：取消留樣類型；同一餐別可登錄多道菜（一道菜一列：菜色＋重量），共用一張留樣照片 */
 function renderSampleForm() {
   renderDeptChips('sample-dept-chips', 'sampleDept');
   renderChips('sample-meal-chips', SAMPLE_MEALS, 'sampleMeal');
@@ -2731,7 +2732,7 @@ async function submitSample() {
     dishes.push({ dish: name, weight: Number(w) });
   }
   if (!dishes.length) { toast('請至少填一道菜色與重量', true); return; }
-  if (!state.photos.sample) { toast('請拍攝留樣磅重照片', true); return; }
+  if (!state.photos.sample) { toast('請拍攝留樣照片', true); return; }
   busy(true);
   try {
     var res = await api({
