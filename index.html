@@ -488,20 +488,6 @@ body.manage-mode .manage-box{display:block}
     </div>
   </div>
 
-  <div class="card c-cctv" onclick="openCctv('daily')">
-    <div class="bar"></div>
-    <div class="inner">
-      <div class="emoji">📹</div>
-      <div>
-        <h3>監視器與影像管理</h3>
-        <div class="en-name">CCTV &amp; Footage Log</div>
-        <p>每日設備檢查（主機／錄影／視訊）<br>影像查閱／刪除稽核紀錄</p>
-        <div class="st" id="st-cctv"></div>
-      </div>
-      <div class="arrow">→</div>
-    </div>
-  </div>
-
   <!-- ===== 02 每週 ===== -->
   <div class="section-head mt">
     <div><span class="num">02</span><span class="label">WEEKLY 每週</span></div>
@@ -536,15 +522,15 @@ body.manage-mode .manage-box{display:block}
     </div>
   </div>
 
-  <div class="card c-cctv" onclick="openCctv('weekly')">
+  <div class="card c-cctv" onclick="openCctv('daily')">
     <div class="bar"></div>
     <div class="inner">
-      <div class="emoji">🎞️</div>
+      <div class="emoji">📹</div>
       <div>
-        <h3>監視器每週巡檢</h3>
-        <div class="en-name">Weekly CCTV Inspection</div>
-        <p>鏡頭遮擋・時間同步・保存 30 天<br>抽查 30 天內 3 日錄影・附巡檢照片</p>
-        <div class="st" id="st-cctv-w"></div>
+        <h3>監視器與影像管理</h3>
+        <div class="en-name">CCTV &amp; Footage Log</div>
+        <p>每週設備巡檢（主機／錄影／視訊）<br>影像查閱／刪除稽核紀錄</p>
+        <div class="st" id="st-cctv"></div>
       </div>
       <div class="arrow">→</div>
     </div>
@@ -954,8 +940,8 @@ body.manage-mode .manage-box{display:block}
     <span class="form-title">監視器與影像管理<span class="en-name">CCTV &amp; Footage Log</span></span>
   </div>
   <div class="tabbar">
-    <button id="cctv-tab-daily" class="active" onclick="switchCctvTab('daily')">每日檢查</button>
-    <button id="cctv-tab-weekly" onclick="switchCctvTab('weekly')">每週巡檢</button>
+    <button id="cctv-tab-daily" class="active" onclick="switchCctvTab('daily')">每週巡檢</button>
+    <button id="cctv-tab-weekly" style="display:none" onclick="switchCctvTab('weekly')">每週巡檢（舊）</button>
   </div>
   <div id="cctv-daily-wrap">
   <div class="panel">
@@ -1308,6 +1294,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v3.8：監視器「每日檢查」改名「每週巡檢」並移到首頁每週區；舊每週巡檢區（CCTV_Weekly）關閉；首頁狀態改看本週有無紀錄
  * v3.7：廚房清潔項目各部門共用（幼兒部廚房也帶出托嬰部建立的砧板／廚房環境項目）
  * v3.6：清潔紀錄移除廚房三色砧板照片（不再必填、不再顯示上傳欄）
  * v3.5：冰箱近期紀錄／匯出依紀錄日期新→舊、不顯示紀錄時間與照片欄；清潔頻率選項「每日一次」改顯示「每日」
@@ -2505,6 +2492,24 @@ async function loadCompliance() {
     document.getElementById('comp-note').textContent = '進度讀取失敗，請下拉重新整理';
   }
 }
+/* 監視器改每週巡檢：由近期紀錄判斷本週（c.week 起訖）是否已填 */
+async function loadCctvWeekStatus(week) {
+  try {
+    if (!week || week.length < 2) return;
+    var res = await api({ action: 'getRecent', form: 'cctv', n: 30 });
+    if (!res.ok) return;
+    var di = -1, pi = res.headers.indexOf('部門');
+    res.headers.forEach(function (h, i) { if (di === -1 && String(h).indexOf('日期') !== -1) di = i; });
+    if (di === -1) return;
+    var lo = fridgeDateKey(week[0]), hi = fridgeDateKey(week[1]);
+    var done = res.rows.some(function (r) {
+      var k = fridgeDateKey(r[di]);
+      return k >= lo && k <= hi && (pi === -1 || String(r[pi]) === COMP_DEPT);
+    });
+    setSt('st-cctv', done ? 'ok' : 'todo', done ? '本週已巡檢' : '本週尚未巡檢');
+  } catch (e) {}
+}
+
 function setSt(id, cls, text) {
   var el = document.getElementById(id);
   if (!el) return;
@@ -2544,14 +2549,13 @@ function renderCompliance(c) {
     setSt('st-light', lb ? 'todo' : (ld === D.light.length ? 'ok' : (ld ? 'part' : 'todo')),
       '今日 ' + ld + '/' + D.light.length + ' 處' + (lb ? '・' + lb + ' 處未達標' : ''));
   }
-  if (D.cctv && !D.cctv.error) setSt('st-cctv', D.cctv.done ? 'ok' : 'todo', D.cctv.done ? '今日已檢查' : '今日尚未檢查');
+  loadCctvWeekStatus(c.week);
 
   if (Array.isArray(W.cleaning)) {
     var wdn = cntDone(W.cleaning);
     setSt('st-clean-w', wdn === W.cleaning.length ? 'ok' : (wdn ? 'part' : 'todo'), '本週 ' + wdn + '/' + W.cleaning.length + ' 班');
   }
   if (W.pest && !W.pest.error) setSt('st-pest', W.pest.done ? 'ok' : 'todo', W.pest.done ? '本週已完成' : '本週尚未檢核');
-  if (W.cctv && !W.cctv.error) setSt('st-cctv-w', W.cctv.done ? 'ok' : 'todo', W.cctv.done ? '本週已巡檢' : '本週尚未巡檢');
 
   if (M.infection && !M.infection.error) setSt('st-infect', M.infection.done ? 'ok' : 'todo', M.infection.done ? '本月已完成' : '本月尚未檢核');
   if (M.finance && !M.finance.error) {
@@ -2841,7 +2845,7 @@ var CCTVW_ITEMS = [
   { key: 'keep', label: '影音檔保存達 30 天', opts: ['是', '否'], bad: '否' }
 ];
 function openCctv(tab) {
-  switchCctvTab(tab);
+  switchCctvTab('daily'); // 舊「每週巡檢」區已關閉，一律開啟巡檢表
   openForm('cctv');
 }
 function switchCctvTab(tab) {
