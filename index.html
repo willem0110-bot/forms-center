@@ -146,7 +146,7 @@ header{
 .field .hint{font-size:12px;color:var(--ink-soft);font-weight:400;margin-left:6px}
 .field-row{display:flex;gap:10px}
 .field-row .field{flex:1}
-input[type=date],input[type=number],input[type=text],select,textarea{
+input[type=date],input[type=number],input[type=text],input[type=time],input[type=month],select,textarea{
   width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;
   font-size:16px;background:#fff;color:var(--ink);font-family:var(--font-body);
 }
@@ -287,6 +287,22 @@ body.manage-mode .manage-box{display:block}
 .recent-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .badge-ok{color:var(--ok);font-weight:700}
 .badge-bad{color:var(--warn);font-weight:700}
+.recent-table td.act{white-space:nowrap}
+.recent-table tr.is-del td{color:var(--idle);text-decoration:line-through}
+.recent-table tr.is-del td.act{text-decoration:none}
+.row-btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 9px;cursor:pointer;font-size:13px;font-family:var(--font-body)}
+.del-tag{display:inline-block;font-size:11px;color:var(--warn);border:1px solid var(--warn);border-radius:var(--radius-pill);padding:1px 7px;margin-right:4px;text-decoration:none}
+.recent-note{font-size:12px;color:var(--ink-soft);margin:0 0 10px}
+/* ===== 修改紀錄視窗 ===== */
+#edit-modal{display:none;position:fixed;inset:0;background:rgba(42,38,34,.45);z-index:180;align-items:flex-end;justify-content:center}
+#edit-modal.show{display:flex}
+#edit-modal .em-sheet{background:var(--bg);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:24px 24px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+#edit-modal .em-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+#edit-modal .em-head h3{font-family:var(--font-title);font-size:20px;margin:0}
+#edit-modal .em-head .en-name{font-family:var(--font-en);font-style:italic;color:var(--ink-soft);font-size:14px}
+#edit-modal .em-close{border:none;background:none;font-size:22px;cursor:pointer;color:var(--ink-soft);width:40px;height:40px}
+#edit-modal .em-meta{font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.6;white-space:pre-line}
+@media (min-width:600px){#edit-modal{align-items:center}#edit-modal .em-sheet{border-radius:24px}}
 /* ===== Toast ===== */
 #toast{
   position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);
@@ -1285,6 +1301,20 @@ body.manage-mode .manage-box{display:block}
 </div>
 
 <!-- 照片燈箱 -->
+<!-- 修改紀錄視窗 -->
+<div id="edit-modal" onclick="if(event.target===this)closeEdit()">
+  <div class="em-sheet">
+    <div class="em-head">
+      <div><h3 id="em-title">修改紀錄</h3><div class="en-name">Edit Record</div></div>
+      <button class="em-close" onclick="closeEdit()" aria-label="關閉">✕</button>
+    </div>
+    <p class="em-meta" id="em-meta"></p>
+    <div class="panel" id="em-fields"></div>
+    <button class="submit-btn" id="em-save" onclick="saveEdit()">儲存修改</button>
+    <button class="secondary-btn danger-btn" id="em-del" onclick="deleteEdit()">🗑 刪除這筆紀錄</button>
+    <button class="secondary-btn" onclick="closeEdit()">取消</button>
+  </div>
+</div>
 <div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" alt="財產照片"><div class="lb-close">✕</div></div>
 
 <!-- Toast & Busy -->
@@ -1299,6 +1329,7 @@ body.manage-mode .manage-box{display:block}
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
+ * v4.0：近期紀錄可點 ✏️ 修改／刪除（填寫本人 7 天內、園長主任不限；標記刪除可復原；後端 Edit.gs）
  * v3.9：監視器影像管理改 定期／家長／公部門查閱；事由僅家長、公部門必填；查閱時段改日期＋起訖時間下拉
  * v3.8：監視器「每日檢查」改名「每週巡檢」並移到首頁每週區；舊每週巡檢區（CCTV_Weekly）關閉；首頁狀態改看本週有無紀錄
  * v3.7：廚房清潔項目各部門共用（幼兒部廚房也帶出托嬰部建立的砧板／廚房環境項目）
@@ -1584,7 +1615,7 @@ function fridgeDateKey(v) {
   var m = String(v == null ? '' : v).match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
   return m ? Number(m[1]) * 10000 + Number(m[2]) * 100 + Number(m[3]) : 0;
 }
-function fridgeView(headers, rows) {
+function fridgeView(headers, rows, meta) {
   var dateIdx = headers.indexOf('紀錄日期');
   var shiftIdx = headers.indexOf('班次');
   var keep = [];
@@ -1593,7 +1624,7 @@ function fridgeView(headers, rows) {
     if (t === '紀錄時間' || t === '記錄時間' || t.indexOf('照片') !== -1) return;
     keep.push(i);
   });
-  var sorted = rows.map(function (r, i) { return { r: r, i: i }; });
+  var sorted = rows.map(function (r, i) { return { r: r, i: i, m: meta ? meta[i] : null }; });
   if (dateIdx !== -1) sorted.sort(function (a, b) {
     var d = fridgeDateKey(b.r[dateIdx]) - fridgeDateKey(a.r[dateIdx]);
     if (d) return d;
@@ -1605,7 +1636,8 @@ function fridgeView(headers, rows) {
   });
   return {
     headers: keep.map(function (i) { return headers[i]; }),
-    rows: sorted.map(function (o) { return keep.map(function (i) { return o.r[i]; }); })
+    rows: sorted.map(function (o) { return keep.map(function (i) { return o.r[i]; }); }),
+    meta: sorted.map(function (o) { return o.m; })
   };
 }
 
@@ -2586,7 +2618,8 @@ function renderCompliance(c) {
     setSt('st-light', lb ? 'todo' : (ld === D.light.length ? 'ok' : (ld ? 'part' : 'todo')),
       '今日 ' + ld + '/' + D.light.length + ' 處' + (lb ? '・' + lb + ' 處未達標' : ''));
   }
-  loadCctvWeekStatus(c.week);
+  if (W.cctv && W.cctv.src === 'log' && !W.cctv.error) setSt('st-cctv', W.cctv.done ? 'ok' : 'todo', W.cctv.done ? '本週已巡檢' : '本週尚未巡檢');
+  else loadCctvWeekStatus(c.week); // 後端尚未更新時的備援
 
   if (Array.isArray(W.cleaning)) {
     var wdn = cntDone(W.cleaning);
@@ -3260,45 +3293,180 @@ async function loadFirstAidStatus() {
 /* ============================================================
  * 近期紀錄
  * ============================================================ */
+/* ============================================================
+ * 近期紀錄＋點選修改／刪除（後端 Edit.gs：action=records）
+ * 權限：填寫本人 7 天內、園長／主任不限；刪除為標記刪除，園長／主任可復原
+ * ============================================================ */
+var RECENT_BOX = {
+  fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
+  cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
+  infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent'
+};
+state.recent = {};
+state.edit = null;
+
 async function loadRecent(form) {
   busy(true);
   try {
-    var res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 })
-      : form === 'firstaid' ? await api({ action: 'firstAid', op: 'recent', n: 10 })
-      : await api({ action: 'getRecent', form: form, n: form === 'fridge' ? 20 : 10 });
+    var n = form === 'fridge' ? 20 : 10;
+    var res = await api({ action: 'records', op: 'list', form: form, n: n });
+    if (!res.ok && res.error === 'UNKNOWN_ACTION') { // 後端尚未部署 Edit.gs：退回唯讀
+      res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 })
+        : form === 'firstaid' ? await api({ action: 'firstAid', op: 'recent', n: 10 })
+        : await api({ action: 'getRecent', form: form, n: n });
+      if (res.ok) res.meta = null;
+    }
     busy(false);
     if (!res.ok) { toast(res.message || '查詢失敗', true); return; }
-    var boxId = {
-      fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
-      cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
-      infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent'
-    }[form];
-    var box = document.getElementById(boxId);
-    if (form === 'fridge') { var fvr = fridgeView(res.headers, res.rows); res.headers = fvr.headers; res.rows = fvr.rows; }
-    if (!res.rows.length) { box.style.display = 'block'; box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
-    var hideCols = [];
-    res.headers.forEach(function (h, i) { if (String(h).indexOf('UID') !== -1 || h === '建立時間戳') hideCols.push(i); });
-    var html = '<div class="recent-wrap"><table class="recent-table"><tr>';
-    res.headers.forEach(function (h, i) { if (hideCols.indexOf(i) === -1) html += '<th>' + esc(h) + '</th>'; });
-    html += '</tr>';
-    res.rows.forEach(function (r) {
-      html += '<tr>';
-      r.forEach(function (v, i) {
-        if (hideCols.indexOf(i) !== -1) return;
-        var cell = esc(v);
-        if (v === '正常' || v === '符合') cell = '<span class="badge-ok">' + v + '</span>';
-        if (v === '異常' || v === '不符合') cell = '<span class="badge-bad">' + v + '</span>';
-        if (String(res.headers[i]).indexOf('照片ID') !== -1 && v) {
-          cell = '<button class="mini-photo" onclick="openLightbox(event,\'' + esc(v) + '\')">📷</button>';
-        }
-        html += '<td>' + cell + '</td>';
-      });
-      html += '</tr>';
-    });
-    html += '</table></div>';
-    box.style.display = 'block';
-    box.innerHTML = html;
+    state.recent[form] = res;
+    renderRecent(form);
   } catch (e) { busy(false); toast('連線失敗', true); }
+}
+
+function renderRecent(form) {
+  var res = state.recent[form];
+  var box = document.getElementById(RECENT_BOX[form]);
+  if (!res || !box) return;
+  var headers = res.headers, rows = res.rows, meta = res.meta || null;
+  if (form === 'fridge') { var fv = fridgeView(headers, rows, meta); headers = fv.headers; rows = fv.rows; meta = meta ? fv.meta : null; }
+  box.style.display = 'block';
+  if (!rows.length) { box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
+  var hideCols = [];
+  headers.forEach(function (h, i) { if (String(h).indexOf('UID') !== -1 || h === '建立時間戳') hideCols.push(i); });
+  var html = meta ? '<p class="recent-note">✏️ 可修改或刪除：自己填的 ' + (res.ownerDays || 7) + ' 天內紀錄' +
+    (res.isManager ? '；你是園長／主任，可修改全部紀錄並復原已刪除的' : '') + '</p>' : '';
+  html += '<div class="recent-wrap"><table class="recent-table"><tr>' + (meta ? '<th></th>' : '');
+  headers.forEach(function (h, i) { if (hideCols.indexOf(i) === -1) html += '<th>' + esc(h) + '</th>'; });
+  html += '</tr>';
+  rows.forEach(function (r, ri) {
+    var m = meta ? meta[ri] : null;
+    html += '<tr' + (m && m.deleted ? ' class="is-del"' : '') + '>';
+    if (meta) {
+      var act = '';
+      if (m && m.deleted) act = '<span class="del-tag">已刪除</span>' + (m.canRestore ? '<button class="row-btn" onclick="restoreRecord(\'' + form + '\',' + m.row + ')">復原</button>' : '');
+      else if (m && m.canEdit) act = '<button class="row-btn" onclick="openEdit(\'' + form + '\',' + m.row + ')">✏️</button>';
+      html += '<td class="act">' + act + '</td>';
+    }
+    r.forEach(function (v, i) {
+      if (hideCols.indexOf(i) !== -1) return;
+      var cell = esc(v);
+      if (v === '正常' || v === '符合') cell = '<span class="badge-ok">' + v + '</span>';
+      if (v === '異常' || v === '不符合') cell = '<span class="badge-bad">' + v + '</span>';
+      if (String(headers[i]).indexOf('照片ID') !== -1 && v) {
+        cell = '<button class="mini-photo" onclick="openLightbox(event,\'' + esc(v) + '\')">📷</button>';
+      }
+      html += '<td>' + cell + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</table></div>';
+  box.innerHTML = html;
+}
+
+function recentRowOf(form, row) {
+  var res = state.recent[form];
+  if (!res || !res.meta) return null;
+  for (var i = 0; i < res.meta.length; i++) if (res.meta[i].row === row) return { res: res, m: res.meta[i], r: res.rows[i] };
+  return null;
+}
+function toInputDate(v) { var m = String(v || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : ''; }
+function toInputMonth(v) { var m = String(v || '').match(/(\d{4})\D+(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) : ''; }
+function toInputTime(v) { var m = String(v || '').match(/(\d{1,2}):(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : ''; }
+
+function openEdit(form, row) {
+  var x = recentRowOf(form, row);
+  if (!x || !x.m.canEdit) { toast('這筆紀錄目前不能修改', true); return; }
+  var res = x.res, cur = {};
+  res.headers.forEach(function (h, i) { cur[h] = x.r[i]; });
+  state.edit = { form: form, row: row, stamp: x.m.stamp, fields: res.fields, orig: {} };
+  document.getElementById('em-title').textContent = '修改：' + (res.title || '紀錄');
+  var who = cur['記錄人'] || cur['清潔人員'] || cur['登記人'] || cur['巡檢人'] || cur['檢核人'] || cur['對帳人'] || cur['更換人員'] || '';
+  document.getElementById('em-meta').textContent = (who ? '填寫人：' + who + '　' : '') + (cur['建立時間戳'] ? '建立：' + cur['建立時間戳'] : '') +
+    '\n儲存後會留下修改紀錄（誰、何時、改了什麼）';
+  var wrap = document.getElementById('em-fields');
+  wrap.innerHTML = '';
+  res.fields.forEach(function (f, idx) {
+    if (!Object.prototype.hasOwnProperty.call(cur, f.h)) return;
+    var v = String(cur[f.h] == null ? '' : cur[f.h]);
+    var id = 'em-f' + idx, el;
+    if (f.type === 'select') {
+      el = document.createElement('select');
+      var opts = (f.opts || []).slice();
+      if (opts.indexOf(v) === -1) opts.unshift(v); // 舊資料值保留可選
+      opts.forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o === '' ? '（空白）' : o; el.appendChild(op); });
+      el.value = v;
+    } else if (f.type === 'textarea') {
+      el = document.createElement('textarea'); el.value = v;
+    } else {
+      el = document.createElement('input');
+      el.type = { date: 'date', month: 'month', time: 'time', number: 'number' }[f.type] || 'text';
+      if (f.type === 'number') { el.inputMode = 'decimal'; el.min = '0'; el.step = 'any'; }
+      el.value = f.type === 'date' ? toInputDate(v) : f.type === 'month' ? toInputMonth(v) : f.type === 'time' ? toInputTime(v) : v;
+    }
+    el.id = id;
+    state.edit.orig[f.h] = el.value;
+    var fd = document.createElement('div');
+    fd.className = 'field';
+    var lb = document.createElement('label');
+    lb.textContent = f.h; lb.htmlFor = id;
+    fd.appendChild(lb); fd.appendChild(el);
+    wrap.appendChild(fd);
+  });
+  document.getElementById('em-del').style.display = x.m.canDelete ? 'block' : 'none';
+  document.getElementById('edit-modal').classList.add('show');
+}
+function closeEdit() { document.getElementById('edit-modal').classList.remove('show'); state.edit = null; }
+
+async function saveEdit() {
+  var e = state.edit;
+  if (!e) return;
+  var values = {}, n = 0;
+  e.fields.forEach(function (f, idx) {
+    var el = document.getElementById('em-f' + idx);
+    if (!el || el.value === e.orig[f.h]) return;
+    var v = el.value;
+    if (f.type === 'date') v = v ? v.replace(/-/g, '/') : '';
+    if (f.type === 'month') v = v ? v.replace('-', '/') : '';
+    values[f.h] = v; n++;
+  });
+  if (!n) { toast('沒有變更任何內容'); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'records', op: 'update', form: e.form, row: e.row, stamp: e.stamp, values: values });
+    busy(false);
+    if (!res.ok) { toast(res.message || '修改失敗', true); if (res.error === 'STALE') { closeEdit(); loadRecent(e.form); } return; }
+    toast('✅ 已修改 ' + res.changed + ' 個欄位');
+    var form = e.form;
+    closeEdit(); afterSubmit(); loadRecent(form);
+  } catch (err) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+async function deleteEdit() {
+  var e = state.edit;
+  if (!e) return;
+  if (!confirm('確定刪除這筆紀錄？\n（資料會保留在試算表並標記「已刪除」，園長／主任可以復原）')) return;
+  busy(true);
+  try {
+    var res = await api({ action: 'records', op: 'delete', form: e.form, row: e.row, stamp: e.stamp });
+    busy(false);
+    if (!res.ok) { toast(res.message || '刪除失敗', true); return; }
+    toast('🗑 已刪除這筆紀錄');
+    var form = e.form;
+    closeEdit(); afterSubmit(); loadRecent(form);
+  } catch (err) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+async function restoreRecord(form, row) {
+  var x = recentRowOf(form, row);
+  if (!x) return;
+  busy(true);
+  try {
+    var res = await api({ action: 'records', op: 'restore', form: form, row: row, stamp: x.m.stamp });
+    busy(false);
+    if (!res.ok) { toast(res.message || '復原失敗', true); return; }
+    toast('✅ 已復原這筆紀錄');
+    afterSubmit(); loadRecent(form);
+  } catch (err) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
 /* ============================================================
