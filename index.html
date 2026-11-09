@@ -1243,7 +1243,7 @@ body.manage-mode .manage-box{display:block}
     <div class="field"><label>部門</label><div class="chips" id="rot-dept-chips"></div></div>
     <div class="field"><label>班級</label><div class="chips" id="rot-class-chips"></div></div>
     <div class="field">
-      <label>撤下的教玩具<span class="hint">從財產清冊挑，或加自製教具</span></label>
+      <label>撤下的教玩具<span class="hint">選填・從財產清冊挑，或加自製教具（撤下／新放入至少填一項）</span></label>
       <div class="rot-picked" id="rot-out-picked"></div>
       <div class="rot-search">
         <input type="text" id="rot-out-q" placeholder="🔍 搜尋財產清冊：名稱或編號" autocomplete="off" oninput="rotSearch('out')" onfocus="rotSearch('out')">
@@ -1252,7 +1252,7 @@ body.manage-mode .manage-box{display:block}
       <div class="rot-self"><input type="text" id="rot-out-self" maxlength="40" placeholder="自製教具名稱"><button type="button" onclick="rotAddSelf('out')">＋ 自製教具</button></div>
     </div>
     <div class="field">
-      <label>新放入的教玩具<span class="hint">從財產清冊挑，或加自製教具</span></label>
+      <label>新放入的教玩具<span class="hint">選填・從財產清冊挑，或加自製教具</span></label>
       <div class="rot-picked" id="rot-in-picked"></div>
       <div class="rot-search">
         <input type="text" id="rot-in-q" placeholder="🔍 搜尋財產清冊：名稱或編號" autocomplete="off" oninput="rotSearch('in')" onfocus="rotSearch('in')">
@@ -3448,8 +3448,7 @@ document.addEventListener('click', function (e) {
 async function submitRotation() {
   if (!state.rotDept) { toast('請選擇部門', true); return; }
   if (!state.rotClass) { toast('請選擇班級', true); return; }
-  if (!state.rotOut.length) { toast('請至少選一項撤下的教玩具', true); return; }
-  if (!state.rotIn.length) { toast('請至少選一項新放入的教玩具', true); return; }
+  if (!state.rotOut.length && !state.rotIn.length) { toast('撤下或新放入的教玩具，至少填一項', true); return; } // v4.5：可只撤下或只新放入
   if (!state.rotDomains.length) { toast('請勾選對應發展領域', true); return; }
   if (!state.rotReasons.length) { toast('請選擇更換原因', true); return; }
   var obs = document.getElementById('rot-obs').value.trim();
