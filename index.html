@@ -292,6 +292,10 @@ body.manage-mode .manage-box{display:block}
 .recent-table tr.is-del td.act{text-decoration:none}
 .row-btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 9px;cursor:pointer;font-size:13px;font-family:var(--font-body)}
 .del-tag{display:inline-block;font-size:11px;color:var(--warn);border:1px solid var(--warn);border-radius:var(--radius-pill);padding:1px 7px;margin-right:4px;text-decoration:none}
+.off-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px dashed var(--line);font-size:13.5px}
+.off-row .nm{flex:1;min-width:0;color:var(--ink-soft)}
+.off-row button{border:1px solid var(--line);background:var(--card);border-radius:var(--radius-pill);padding:6px 14px;font-size:13px;cursor:pointer;color:var(--accent);font-weight:700}
+.show-del{border:none;background:none;color:var(--accent);font-size:12.5px;cursor:pointer;padding:0;margin:0 0 10px;font-family:var(--font-body)}
 .recent-note{font-size:12px;color:var(--ink-soft);margin:0 0 10px}
 /* ===== 修改紀錄視窗 ===== */
 #edit-modal{display:none;position:fixed;inset:0;background:rgba(42,38,34,.45);z-index:180;align-items:flex-end;justify-content:center}
@@ -825,6 +829,8 @@ body.manage-mode .manage-box{display:block}
         <input type="text" id="ai-name" placeholder="項目名稱（如：紗窗）" style="flex:1">
         <button class="tool-btn on" style="width:90px" onclick="addItem()">＋新增</button>
       </div>
+      <div class="mb-title" style="margin-top:14px">已移除的項目<span style="font-weight:400;color:var(--ink-soft)">（點「恢復」放回清單）</span></div>
+      <div id="off-items"></div>
     </div>
     <div class="manage-box" id="class-manage-box" style="display:none">
       <div class="mb-title" id="add-class-title">新增班級（限園長／主任）</div>
@@ -1372,6 +1378,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.4：清潔紀錄匯出比照紙本「班級環境清潔消毒記錄表」矩陣格式；匯出不含建立時間；近期紀錄預設隱藏已刪除；公共區域不套用全班共用項目、可恢復已移除項目
  * v4.3：所有紀錄表可匯出 Excel（各表頁面＋首頁一次匯出全部＋財產清冊；後端 Export.gs）
  * v4.2：急救箱品項改由後端 FirstAid_Items 驅動（20 項含容量／尺寸、取消急救手冊）；園長／主任可新增、修改、停用、排序品項
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
@@ -1436,6 +1443,7 @@ async function init() {
     state.freezerOpts = res.freezerOpts || [];
     state.fridgeOpts = res.fridgeOpts || [];
     state.items = res.cleaningItems || [];
+    state.itemsOff = res.cleaningItemsOff || [];
     state.assetCats = res.assetCategories || [];
     state.milkOpts = res.milkOpts || [];
     if (res.shifts) state.shifts = res.shifts;
@@ -1619,7 +1627,7 @@ function loadSheetJs() {
   if (sheetJsReady) return sheetJsReady;
   sheetJsReady = new Promise(function (resolve, reject) {
     var s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js'; // v4.4：SheetJS 相容＋儲存格樣式（清潔紀錄表框線）
     s.onload = resolve;
     s.onerror = function () { sheetJsReady = null; reject(new Error('Excel 元件載入失敗')); };
     document.body.appendChild(s);
@@ -1639,7 +1647,8 @@ async function exportFridge() {
     busy(false);
     if (!res.ok) { toast(res.message || '匯出失敗', true); return; }
     if (!res.rows.length) { toast('該月份沒有符合的紀錄', true); return; }
-    var fv = fridgeView(res.headers, res.rows);
+    var fv0 = fridgeView(res.headers, res.rows);
+    var fv = xpDropCols(fv0.headers, fv0.rows);
     var aoa = [fv.headers].concat(fv.rows);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = fv.headers.map(function (h, i) {
@@ -1704,6 +1713,165 @@ function xpSheet(headers, rows) {
   });
   return ws;
 }
+/* v4.4：匯出不含建立時間 */
+function xpDropCols(headers, rows) {
+  var keep = [];
+  headers.forEach(function (h, i) { if (!/建立時間/.test(String(h))) keep.push(i); });
+  return {
+    headers: keep.map(function (i) { return headers[i]; }),
+    rows: rows.map(function (r) { return keep.map(function (i) { return r[i]; }); })
+  };
+}
+
+/* ============================================================
+ * v4.4：清潔紀錄矩陣（比照紙本「班級環境清潔消毒記錄表」）
+ *   每個 部門×班級×表單×月份 一頁；列＝日期（每日表 1～月底；每週表＝有紀錄的日期），欄＝區域／項目
+ *   ✓＝當日已完成；同名項目（如多區的「地板」）依勾選順序對應到各區
+ * ============================================================ */
+var WEEKDAY_ZH = ['日', '一', '二', '三', '四', '五', '六'];
+function cleanColumns(items) {
+  var areas = [], map = {};
+  items.forEach(function (it) {
+    if (!map[it.area]) { map[it.area] = []; areas.push(it.area); }
+    map[it.area].push(it);
+  });
+  var cols = [];
+  areas.forEach(function (a) { map[a].forEach(function (it) { cols.push({ area: a, name: it.name, freq: freqLabel(it.freq) }); }); });
+  return cols;
+}
+function cleanOrgTitle(dept) { return dept === '托嬰部' ? '新竹市私立星安托嬰中心' : '星安國際蒙特梭利藝術幼兒園'; }
+function cleanMatrixSheets(headers, rows) {
+  var ix = function (n) { return headers.indexOf(n); };
+  var iD = ix('紀錄日期'), iF = ix('表單'), iDept = ix('部門'), iC = ix('班級'), iItems = ix('完成項目'),
+    iConc = ix('消毒水濃度'), iUv = ix('紫外線燈時數'), iWho = ix('清潔人員');
+  var groups = {}, order = [];
+  rows.forEach(function (r) {
+    var m = String(r[iD] || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+    if (!m) return;
+    var form = String(r[iF] || '每日') || '每日', dept = String(r[iDept] || ''), cls = String(r[iC] || '');
+    var ym = m[1] + '-' + ('0' + m[2]).slice(-2);
+    var key = [dept, cls, form, ym].join('|');
+    if (!groups[key]) { groups[key] = { dept: dept, cls: cls, form: form, y: +m[1], mo: +m[2], recs: [] }; order.push(key); }
+    groups[key].recs.push({ d: +m[3], r: r });
+  });
+  var dIdx = function (g) {
+    var di = state.depts.map(function (d) { return d.name; }).indexOf(g.dept);
+    var dept = deptOf(g.dept), ci = dept ? dept.classes.indexOf(g.cls) : -1;
+    if (g.cls === state.kitchen) ci = 900;
+    return (di < 0 ? 9 : di) * 100000 + (ci < 0 ? 950 : ci) * 100 + (g.form === '每日' ? 0 : 50) + 0;
+  };
+  order.sort(function (a, b) {
+    var ga = groups[a], gb = groups[b];
+    return (ga.y * 100 + ga.mo) - (gb.y * 100 + gb.mo) || dIdx(ga) - dIdx(gb);
+  });
+  var multiMonth = {};
+  order.forEach(function (k) { var g = groups[k]; multiMonth[g.y * 100 + g.mo] = 1; });
+  var showYm = Object.keys(multiMonth).length > 1;
+  return order.map(function (k) {
+    var g = groups[k];
+    var all = (state.items || []).concat(state.itemsOff || []);
+    var cols = cleanColumns(itemsFor(g.dept, g.cls, g.form));
+    var byName = function (n) { var o = []; cols.forEach(function (c, i) { if (c.name === n) o.push(i); }); return o; };
+    var days = {};
+    g.recs.forEach(function (x) {
+      var day = days[x.d] || (days[x.d] = { marks: {}, conc: [], uv: [], who: [] });
+      var used = {};
+      String(x.r[iItems] || '').split('、').map(function (t) { return t.trim(); }).filter(String).forEach(function (t) {
+        var idx = byName(t);
+        if (!idx.length) { // 已移除或改名的項目：補在最後
+          var off = all.filter(function (it) { return it.name === t; })[0];
+          cols.push({ area: off ? off.area : '其他', name: t, freq: off ? freqLabel(off.freq) : '' });
+          idx = [cols.length - 1];
+        }
+        var pick = idx.filter(function (i) { return !used[i]; })[0];
+        if (pick === undefined) pick = idx[0];
+        used[pick] = 1; day.marks[pick] = 1;
+      });
+      var c = String(iConc >= 0 ? x.r[iConc] || '' : ''), u = String(iUv >= 0 ? x.r[iUv] || '' : ''), w = String(iWho >= 0 ? x.r[iWho] || '' : '');
+      if (c && day.conc.indexOf(c) === -1) day.conc.push(c);
+      if (u !== '' && day.uv.indexOf(u) === -1) day.uv.push(u);
+      if (w && day.who.indexOf(w) === -1) day.who.push(w);
+    });
+    // 同區域欄位要相鄰：補上的欄依區域重排
+    var areaOrder = [];
+    cols.forEach(function (c) { if (areaOrder.indexOf(c.area) === -1) areaOrder.push(c.area); });
+    var perm = [];
+    areaOrder.forEach(function (a) { cols.forEach(function (c, i) { if (c.area === a) perm.push(i); }); });
+    var sCols = perm.map(function (i) { return cols[i]; });
+    var weekly = g.form === '每週';
+    var extraHead = weekly ? '紫外線燈時數' : '消毒水濃度';
+    var nC = sCols.length + 3;
+    var kind = g.cls === state.kitchen ? '廚房清潔消毒記錄表' : (weekly ? '班級每週清潔消毒記錄表' : '班級環境清潔消毒記錄表');
+    var aoa = [], merges = [];
+    var blank = function () { var a = []; for (var i = 0; i < nC; i++) a.push(''); return a; };
+    var r0 = blank(); r0[0] = cleanOrgTitle(g.dept) + '　' + kind; aoa.push(r0);
+    var r1 = blank(); r1[0] = '班級：' + g.cls + '　　部門：' + g.dept + '　　日期：' + g.y + ' 年 ' + g.mo + ' 月'; aoa.push(r1);
+    merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: nC - 1 } }, { s: { r: 1, c: 0 }, e: { r: 1, c: nC - 1 } });
+    var r2 = blank(), r3 = blank(), r4 = blank();
+    r2[0] = '日期'; r2[nC - 2] = extraHead; r2[nC - 1] = '清潔人員簽章';
+    merges.push({ s: { r: 2, c: 0 }, e: { r: 4, c: 0 } }, { s: { r: 2, c: nC - 2 }, e: { r: 4, c: nC - 2 } }, { s: { r: 2, c: nC - 1 }, e: { r: 4, c: nC - 1 } });
+    var start = 0;
+    sCols.forEach(function (c, i) {
+      r3[i + 1] = c.name; r4[i + 1] = c.freq;
+      if (i === sCols.length - 1 || sCols[i + 1].area !== c.area) {
+        r2[start + 1] = '＊' + c.area;
+        if (i > start) merges.push({ s: { r: 2, c: start + 1 }, e: { r: 2, c: i + 1 } });
+        start = i + 1;
+      }
+    });
+    aoa.push(r2, r3, r4);
+    var dayList = [];
+    if (weekly) dayList = Object.keys(days).map(Number).sort(function (a, b) { return a - b; });
+    else { var last = new Date(Date.UTC(g.y, g.mo, 0)).getUTCDate(); for (var d = 1; d <= last; d++) dayList.push(d); }
+    dayList.forEach(function (d) {
+      var row = blank(), day = days[d];
+      row[0] = (weekly ? g.mo + '/' : '') + d + '（' + WEEKDAY_ZH[new Date(Date.UTC(g.y, g.mo - 1, d)).getUTCDay()] + '）';
+      if (day) {
+        perm.forEach(function (orig, i) { if (day.marks[orig]) row[i + 1] = '✓'; });
+        row[nC - 2] = (weekly ? day.uv : day.conc).join('\n');
+        row[nC - 1] = day.who.join('、');
+      }
+      aoa.push(row);
+    });
+    var tableEnd = aoa.length - 1;
+    var notes = ['註 1：＊代表依中心之環境，加註消毒的頻率（見欄名下方）。✓＝當日已完成清潔消毒。',
+      '註 2：本表依工作項目，清潔消毒後如實記錄（資料來源：星安表格中心）。',
+      '註 3：消毒方式：(1) 一般消毒：配製 500ppm 含氯漂白水進行擦拭或浸泡。(2) 針對病童分泌物或排泄物污染之物品，以 1000ppm 含氯漂白水消毒及接受陽光曝曬。',
+      '檢查人員：＿＿＿＿＿＿＿＿　　　　主任：＿＿＿＿＿＿＿＿'];
+    if (g.dept === '托嬰部') notes.push('註：此表格為搭配訪視指標「教保活動－嬰幼兒托育設備、材料及活動實施－當天使用的各種教（玩）具或素材應清潔，並留有相關紀錄。」');
+    notes.forEach(function (t) { var r = blank(); r[0] = t; aoa.push(r); merges.push({ s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: nC - 1 } }); });
+
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = merges;
+    ws['!cols'] = [{ wch: 9 }].concat(sCols.map(function () { return { wch: 4.6 }; })).concat([{ wch: weekly ? 9 : 18 }, { wch: 12 }]);
+    var rowsH = [{ hpt: 26 }, { hpt: 20 }, { hpt: 20 }, { hpt: 112 }, { hpt: 26 }];
+    for (var rr = 5; rr <= tableEnd; rr++) rowsH.push({ hpt: 20 });
+    notes.forEach(function () { rowsH.push({ hpt: 30 }); });
+    ws['!rows'] = rowsH;
+    var font = { name: 'PMingLiU', sz: 11 };
+    var thin = { style: 'thin', color: { rgb: '555555' } };
+    var box = { top: thin, bottom: thin, left: thin, right: thin };
+    for (var R = 0; R < aoa.length; R++) for (var C = 0; C < nC; C++) {
+      var ref = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+      var st = { font: font, alignment: { vertical: 'center', horizontal: 'center', wrapText: true } };
+      if (R === 0) st.font = { name: 'PMingLiU', sz: 15, bold: true };
+      else if (R === 1) st.alignment = { vertical: 'center', horizontal: 'right' };
+      else if (R <= tableEnd) {
+        st.border = box;
+        if (R === 3 && C > 0 && C < nC - 2) st.alignment = { vertical: 'center', horizontal: 'center', wrapText: true, textRotation: 255 };
+        if (R === 4) st.font = { name: 'PMingLiU', sz: 9, color: { rgb: '6B645C' } };
+        if (R >= 5 && C > 0 && C < nC - 2) st.font = { name: 'PMingLiU', sz: 12, bold: true };
+        if (R >= 5 && C >= nC - 2) st.font = { name: 'PMingLiU', sz: 9 };
+      } else st.alignment = { vertical: 'center', horizontal: 'left', wrapText: true };
+      if (R >= 2 && R <= 4) st.fill = { patternType: 'solid', fgColor: { rgb: 'F7F3EA' } };
+      ws[ref].s = st;
+    }
+    var nm = '清潔_' + g.cls + (weekly ? '每週' : '') + (showYm ? '_' + g.y + ('0' + g.mo).slice(-2) : '');
+    return { name: nm, ws: ws };
+  });
+}
+
 function xpSheetName(t, used) {
   var n = String(t).replace(/[\[\]:*?\/\\]/g, '').slice(0, 28) || '工作表', k = n, i = 2;
   while (used[k]) k = n + i++;
@@ -1730,7 +1898,12 @@ async function exportForms(forms, key) {
       summary.push([xpTitle(sh.form), rows.length]);
       if (!rows.length) return;
       total += rows.length;
-      XLSX.utils.book_append_sheet(wb, xpSheet(h, rows), xpSheetName(xpTitle(sh.form), used));
+      if (sh.form === 'cleaning') { // v4.4：比照紙本「班級環境清潔消毒記錄表」，每班每月一頁
+        cleanMatrixSheets(h, rows).forEach(function (m) { XLSX.utils.book_append_sheet(wb, m.ws, xpSheetName(m.name, used)); });
+        return;
+      }
+      var dc = xpDropCols(h, rows);
+      XLSX.utils.book_append_sheet(wb, xpSheet(dc.headers, dc.rows), xpSheetName(xpTitle(sh.form), used));
     });
     var range = (month ? month.replace('-', '/') : '全部月份') + '・' + (dept || '全部部門');
     if (!total) { toast(range + ' 沒有符合的紀錄', true); return; }
@@ -1950,26 +2123,54 @@ function renderCleanForm() {
   renderItems();
 }
 
-function deptItems() {
-  if (state.selectedClass === state.kitchen) {
+/* v4.4：「公共區域」不套用全班共用的教室項目（避免在公共區域刪共用項目，連帶讓各班項目消失） */
+var PUBLIC_AREA = '公共區域';
+function itemAppliesTo(it, cls) { return it.cls ? it.cls === cls : (cls !== PUBLIC_AREA && cls !== state.kitchen); }
+function itemsFor(deptName, cls, form, list) {
+  list = list || state.items;
+  if (cls === state.kitchen) {
     // 廚房項目各部門共用：不分部門，同區域同名只列一次（本部門的優先）
     var seen = {}, out = [];
-    var pool = state.items.filter(function (it) {
-      return it.cls === state.kitchen && (it.form || '每日') === state.cleanForm;
+    var pool = list.filter(function (it) {
+      return it.cls === state.kitchen && (it.form || '每日') === form;
     });
-    pool.sort(function (a, b) { return (a.dept === state.cleanDept ? 0 : 1) - (b.dept === state.cleanDept ? 0 : 1); });
+    pool.sort(function (a, b) { return (a.dept === deptName ? 0 : 1) - (b.dept === deptName ? 0 : 1); });
     pool.forEach(function (it) {
       var k = it.area + '\u0001' + it.name;
       if (seen[k]) return;
       seen[k] = 1; out.push(it);
     });
-    return state.items.filter(function (it) { return out.indexOf(it) !== -1; }); // 維持原排序
+    return list.filter(function (it) { return out.indexOf(it) !== -1; }); // 維持原排序
   }
-  return state.items.filter(function (it) {
-    if (it.dept !== state.cleanDept) return false;
-    if ((it.form || '每日') !== state.cleanForm) return false;
-    return !it.cls || it.cls === state.selectedClass; // 空白＝全班共用
+  return list.filter(function (it) {
+    if (it.dept !== deptName) return false;
+    if ((it.form || '每日') !== form) return false;
+    return itemAppliesTo(it, cls); // 空白＝全班共用（公共區域除外）
   });
+}
+function deptItems() { return itemsFor(state.cleanDept, state.selectedClass, state.cleanForm); }
+function renderOffItems() {
+  var wrap = document.getElementById('off-items');
+  if (!wrap) return;
+  if (!state.cleanDept || !state.selectedClass) { wrap.innerHTML = '<p style="font-size:12.5px;color:var(--ink-soft)">請先選擇部門與班級</p>'; return; }
+  var list = itemsFor(state.cleanDept, state.selectedClass, state.cleanForm, state.itemsOff || []);
+  wrap.innerHTML = list.length ? list.map(function (it) {
+    return '<div class="off-row"><span class="nm">' + esc(it.area) + '・' + esc(it.name) + (it.cls ? '' : '（全班共用）') + '</span>'
+      + '<button type="button" onclick="restoreItem(\'' + esc(it.id) + '\')">恢復</button></div>';
+  }).join('') : '<p style="font-size:12.5px;color:var(--ink-soft)">沒有已移除的項目</p>';
+}
+async function restoreItem(id) {
+  busy(true);
+  try {
+    var res = await api({ action: 'toggleCleaningItem', id: id });
+    busy(false);
+    if (!res.ok) { toast('恢復失敗', true); return; }
+    state.items = res.items;
+    if (res.itemsOff) state.itemsOff = res.itemsOff;
+    else state.itemsOff = (state.itemsOff || []).filter(function (x) { return x.id !== id; });
+    renderItems();
+    toast('✅ 已恢復項目');
+  } catch (e) { busy(false); toast('連線失敗', true); }
 }
 
 function openClean(form) {
@@ -1988,6 +2189,7 @@ function switchCleanForm(form) {
 function renderItems() {
   var wrap = document.getElementById('clean-items');
   wrap.innerHTML = '';
+  renderOffItems();
   if (!state.cleanDept || !state.selectedClass) { updateProgress(); return; }
   var areas = {};
   deptItems().forEach(function (it) {
@@ -2071,13 +2273,19 @@ async function addItem() {
 
 async function removeItem(ev, id, name) {
   ev.preventDefault(); ev.stopPropagation();
-  if (!confirm('確定要移除項目「' + name + '」嗎？\n（歷史紀錄不會受影響）')) return;
+  var it = state.items.filter(function (x) { return x.id === id; })[0];
+  var shared = it && !it.cls;
+  if (!confirm('確定要移除項目「' + name + '」嗎？' +
+    (shared ? '\n\n⚠️ 這是「' + state.cleanDept + '全班共用」項目，移除後所有班級都會一起消失。' : '') +
+    '\n（歷史紀錄不會受影響；之後可在「已移除的項目」恢復）')) return;
   busy(true);
   try {
     var res = await api({ action: 'toggleCleaningItem', id: id });
     busy(false);
     if (!res.ok) { toast('移除失敗', true); return; }
     state.items = res.items;
+    if (res.itemsOff) state.itemsOff = res.itemsOff;
+    else if (it) state.itemsOff = (state.itemsOff || []).concat([it]);
     renderItems();
     toast('已移除「' + name + '」');
   } catch (e) { busy(false); toast('連線失敗', true); }
@@ -3605,12 +3813,27 @@ function renderRecent(form) {
   if (!res || !box) return;
   var headers = res.headers, rows = res.rows, meta = res.meta || null;
   if (form === 'fridge') { var fv = fridgeView(headers, rows, meta); headers = fv.headers; rows = fv.rows; meta = meta ? fv.meta : null; }
+  // v4.4：已刪除的紀錄預設不顯示；園長／主任可點「顯示已刪除」復原
+  var delN = 0;
+  if (meta) {
+    var showDel = !!(state.showDel && state.showDel[form]);
+    var kr = [], km = [];
+    rows.forEach(function (r, i) {
+      var m = meta[i];
+      if (m && m.deleted) { delN++; if (!showDel) return; }
+      kr.push(r); km.push(m);
+    });
+    rows = kr; meta = km;
+  }
+  var delBtn = (delN && res.isManager) ? '<button class="show-del" onclick="toggleShowDel(\'' + form + '\')">'
+    + (state.showDel && state.showDel[form] ? '隱藏已刪除的紀錄' : '顯示已刪除的紀錄（' + delN + ' 筆，可復原）') + '</button>' : '';
   box.style.display = 'block';
-  if (!rows.length) { box.innerHTML = '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
+  if (!rows.length) { box.innerHTML = delBtn + '<p style="color:var(--ink-soft);text-align:center">目前還沒有紀錄</p>'; return; }
   var hideCols = [];
   headers.forEach(function (h, i) { if (String(h).indexOf('UID') !== -1 || h === '建立時間戳') hideCols.push(i); });
   var html = meta ? '<p class="recent-note">✏️ 可修改或刪除：自己填的 ' + (res.ownerDays || 7) + ' 天內紀錄' +
     (res.isManager ? '；你是園長／主任，可修改全部紀錄並復原已刪除的' : '') + '</p>' : '';
+  html += delBtn;
   html += '<div class="recent-wrap"><table class="recent-table"><tr>' + (meta ? '<th></th>' : '');
   headers.forEach(function (h, i) { if (hideCols.indexOf(i) === -1) html += '<th>' + esc(h) + '</th>'; });
   html += '</tr>';
@@ -3639,6 +3862,11 @@ function renderRecent(form) {
   box.innerHTML = html;
 }
 
+function toggleShowDel(form) {
+  state.showDel = state.showDel || {};
+  state.showDel[form] = !state.showDel[form];
+  renderRecent(form);
+}
 function recentRowOf(form, row) {
   var res = state.recent[form];
   if (!res || !res.meta) return null;
