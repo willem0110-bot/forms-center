@@ -799,7 +799,7 @@ body.manage-mode .manage-box{display:block}
       <div class="chips" id="clean-class-chips"><span class="chips-empty">請先選擇部門</span></div>
     </div>
     <div class="field" id="conc-field">
-      <label>消毒水濃度<span class="hint">必填</span></label>
+      <label>消毒水濃度<span class="hint">必填・可複選</span></label>
       <div class="chips" id="conc-chips"></div>
     </div>
     <div class="field" id="uv-field" style="display:none">
@@ -1382,6 +1382,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.7：消毒水濃度可複選
  * v4.6：清潔項目管理：新增可「選擇班級」多選；園長／主任可直接下拉改頻率、歸屬（共用／班級），區域名稱可改（後端 CleanEdit.gs）
  * v4.5：教玩具輪替可只填撤下或只填新放入
  * v4.4：清潔紀錄匯出比照紙本「班級環境清潔消毒記錄表」矩陣格式；匯出不含建立時間；近期紀錄預設隱藏已刪除；公共區域不套用全班共用項目、可恢復已移除項目
@@ -1420,7 +1421,7 @@ var state = {
   editOrig: null, editPhotoId: '', removePhoto: false,
   cctvDept: '', cctvHost: '', cctvRec: '', cctvVid: '', cctvMgmt: '定期查閱',
   fridgeShift: '', milkKey: '', milkOpts: [], shifts: ['上午', '下午'], concOpts: ['漂白水 1000ppm', '漂白水 5000ppm', '次氯酸水 中濃度 100ppm'], kitchen: '廚房',
-  cleanForm: '每日', cleanConc: '', photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
+  cleanForm: '每日', cleanConc: [], photos: {}, comp: null, compDirty: false, cctvTab: 'daily',
   sampleDept: '', sampleMeal: '', sampleDishes: [{ dish: '', weight: '' }], lightDept: '', pestDept: '', pest: {},
   infDept: '', inf: {}, faDept: '', fa: {}, finDept: '', finSigned: '', finSub: '', cctvwDept: '', cctvw: {}, cctvwResult: '',
   rotDept: '', rotClass: '', rotOut: [], rotIn: [], rotDomains: [], rotReasons: [], rotAssets: null,
@@ -2117,7 +2118,7 @@ function renderCleanForm() {
       }));
     }
   }
-  renderChips('conc-chips', state.concOpts, 'cleanConc');
+  renderConcChips();
   document.getElementById('conc-field').style.display = state.cleanForm === '每日' ? 'block' : 'none';
   document.getElementById('uv-field').style.display = state.cleanForm === '每週' ? 'block' : 'none';
   document.getElementById('add-item-title').textContent =
@@ -2444,7 +2445,7 @@ async function submitCleaning() {
   var checked = allChecks().filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.name; });
   if (!checked.length) { toast('請至少勾選一個清潔項目', true); return; }
   var isKitchen = state.selectedClass === state.kitchen;
-  if (state.cleanForm === '每日' && !state.cleanConc) { toast('請選擇消毒水濃度', true); return; }
+  if (state.cleanForm === '每日' && !state.cleanConc.length) { toast('請選擇消毒水濃度（可複選）', true); return; }
   var uv = document.getElementById('clean-uv').value;
   if (state.cleanForm === '每週' && state.cleanDept === '托嬰部' && uv === '') { toast('請填紫外線燈開啟時數（沒開請填 0）', true); return; }
   busy(true);
@@ -2455,7 +2456,7 @@ async function submitCleaning() {
       dept: state.cleanDept,
       className: state.selectedClass,
       form: state.cleanForm,
-      conc: state.cleanForm === '每日' ? state.cleanConc : '',
+      conc: state.cleanForm === '每日' ? state.cleanConc.slice() : '',
       uvHours: state.cleanForm === '每週' ? uv : '',
       boardPhoto: '',
       checked: checked
@@ -2940,6 +2941,20 @@ function renderDeptChips(elId, stateKey, after) {
       state[stateKey] = name;
       renderDeptChips(elId, stateKey, after);
       if (after) after();
+    }));
+  });
+}
+/* v4.7：消毒水濃度可複選（送陣列；後端 v3.0 以「、」串接存檔） */
+function renderConcChips() {
+  var wrap = document.getElementById('conc-chips');
+  if (!Array.isArray(state.cleanConc)) state.cleanConc = state.cleanConc ? [state.cleanConc] : [];
+  state.cleanConc = state.cleanConc.filter(function (c) { return state.concOpts.indexOf(c) !== -1; });
+  wrap.innerHTML = '';
+  state.concOpts.forEach(function (o) {
+    wrap.appendChild(chipBtn(o, state.cleanConc.indexOf(o) !== -1, function (name) {
+      var i = state.cleanConc.indexOf(name);
+      if (i === -1) state.cleanConc.push(name); else state.cleanConc.splice(i, 1);
+      renderConcChips();
     }));
   });
 }
