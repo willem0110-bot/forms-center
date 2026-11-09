@@ -690,6 +690,22 @@ body.manage-mode .manage-box{display:block}
       <div class="arrow">→</div>
     </div>
   </div>
+
+  <!-- ===== 05 匯出 ===== -->
+  <div class="section-head mt">
+    <div><span class="num">05</span><span class="label">EXPORT 匯出報表</span></div>
+    <span class="note">all forms</span>
+  </div>
+  <div class="panel" id="xp-all-panel">
+    <div class="field">
+      <label>一次匯出全部表單<span class="hint">每張表一個分頁；月份留白＝全部紀錄</span></label>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>月份</label><input type="month" id="xpm-all"></div>
+      <div class="field"><label>部門</label><select id="xpd-all"><option value="">全部</option></select></div>
+    </div>
+    <button class="secondary-btn" style="margin-top:0" onclick="exportAllForms()">⬇️ 匯出全部表單 Excel</button>
+  </div>
 </div>
 
 <!-- ===== 冰箱溫度 ===== -->
@@ -961,6 +977,7 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <div class="chips" id="asset-filter-chips"></div>
     </div>
+    <button type="button" class="secondary-btn" style="margin:0 0 10px" onclick="exportAssets()">⬇️ 匯出財產清冊 Excel</button>
     <div class="asset-summary" id="as-summary">載入中…</div>
     <div id="as-rows"></div>
     <button class="secondary-btn" onclick="fetchAssets(true)">🔄 重新整理</button>
@@ -1355,6 +1372,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.3：所有紀錄表可匯出 Excel（各表頁面＋首頁一次匯出全部＋財產清冊；後端 Export.gs）
  * v4.2：急救箱品項改由後端 FirstAid_Items 驅動（20 項含容量／尺寸、取消急救手冊）；園長／主任可新增、修改、停用、排序品項
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
  * v4.2：留樣「磅重照片」改名「留樣照片」，拿掉拍攝說明；首頁卡片說明改每道菜 ≥ 50g
@@ -1482,6 +1500,7 @@ function renderApp(today) {
   state.sampleDept = state.lightDept = state.pestDept = state.infDept = state.faDept = state.finDept = state.cctvwDept = dd;
   if (state.user.canManageClass) document.getElementById('card-finance').style.display = 'block';
   initFridgeExport();
+  mountExportBoxes();
   initAssetDropzone();
   renderFridgeForm();
   renderCleanForm();
@@ -1638,6 +1657,121 @@ async function exportFridge() {
     busy(false);
     toast(String(e && e.message ? e.message : '匯出失敗，請再試一次'), true);
   }
+}
+
+/* ============================================================
+ * v4.3：所有紀錄表匯出 Excel（後端 Export.gs：action=exportData，唯讀）
+ *   每張表的頁面各有匯出區塊；首頁可一次匯出全部（每張表一個分頁）；財產清冊另由前端匯出
+ * ============================================================ */
+var EXPORT_FORMS = [
+  { form: 'fridge', title: '冰箱溫度' }, { form: 'cleaning', title: '環境清潔消毒' },
+  { form: 'sample', title: '餐點48小時留樣' }, { form: 'light', title: '照度與溫濕度' },
+  { form: 'pest', title: '病媒防制與衛生檢核' }, { form: 'cctv', title: '監視器與影像管理' },
+  { form: 'infection', title: '衛生保健與感控月檢' }, { form: 'firstaid', title: '急救箱耗材檢核' },
+  { form: 'rotation', title: '教玩具輪替' }, { form: 'finance', title: '收退費對帳', manager: true },
+  { form: 'toy', title: '教玩具檢修' }
+];
+function xpTitle(form) { var f = EXPORT_FORMS.filter(function (x) { return x.form === form; })[0]; return f ? f.title : form; }
+function xpDeptOpts() {
+  return '<option value="">全部</option>' + state.depts.map(function (d) { return '<option value="' + esc(d.name) + '">' + esc(d.name) + '</option>'; }).join('');
+}
+function mountExportBoxes() {
+  var ym = ymInput(0);
+  document.getElementById('xpm-all').value = ym;
+  document.getElementById('xpd-all').innerHTML = xpDeptOpts();
+  EXPORT_FORMS.forEach(function (f) {
+    if (f.form === 'fridge') return; // 冰箱沿用原本含場域的匯出
+    if (f.manager && !state.user.canManageClass) return;
+    var box = document.getElementById(RECENT_BOX[f.form]);
+    if (!box || document.getElementById('xp-' + f.form)) return;
+    var p = document.createElement('div');
+    p.className = 'panel';
+    p.id = 'xp-' + f.form;
+    p.innerHTML = '<div class="field"><label>匯出報表<span class="hint">依月份／部門匯出 Excel（.xlsx）；月份留白＝全部紀錄</span></label></div>'
+      + '<div class="field-row"><div class="field"><label>月份</label><input type="month" id="xpm-' + f.form + '" value="' + ym + '"></div>'
+      + '<div class="field"><label>部門</label><select id="xpd-' + f.form + '">' + xpDeptOpts() + '</select></div></div>'
+      + '<button class="secondary-btn" style="margin-top:0" onclick="exportForms([\'' + f.form + '\'],\'' + f.form + '\')">⬇️ 匯出 Excel</button>';
+    box.parentNode.insertBefore(p, box);
+  });
+}
+function xpSheet(headers, rows) {
+  var aoa = [headers].concat(rows);
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headers.map(function (h, i) {
+    var w = String(h).length * 2 + 2;
+    aoa.forEach(function (r) { String(r[i] == null ? '' : r[i]).split('\n').forEach(function (t) { w = Math.max(w, t.length + 4); }); });
+    return { wch: Math.min(w, 40) };
+  });
+  return ws;
+}
+function xpSheetName(t, used) {
+  var n = String(t).replace(/[\[\]:*?\/\\]/g, '').slice(0, 28) || '工作表', k = n, i = 2;
+  while (used[k]) k = n + i++;
+  used[k] = 1;
+  return k;
+}
+function exportAllForms() {
+  exportForms(EXPORT_FORMS.filter(function (f) { return !f.manager || state.user.canManageClass; }).map(function (f) { return f.form; }), 'all');
+}
+async function exportForms(forms, key) {
+  var month = document.getElementById('xpm-' + key).value;
+  var dept = document.getElementById('xpd-' + key).value;
+  busy(true);
+  try {
+    await loadSheetJs();
+    var res = await api({ action: 'exportData', forms: forms, month: month, dept: dept });
+    busy(false);
+    if (!res.ok) { toast(res.error === 'UNKNOWN_ACTION' ? '後端尚未更新匯出功能（Export.gs），請先部署新版本' : (res.message || '匯出失敗'), true); return; }
+    var wb = XLSX.utils.book_new(), used = {}, total = 0, summary = [['表單', '筆數']];
+    res.sheets.forEach(function (sh) {
+      var h = sh.headers || [], rows = sh.rows || [];
+      if (sh.skipped) { summary.push([xpTitle(sh.form), sh.skipped]); return; }
+      if (sh.form === 'fridge' && h.length) { var fv = fridgeView(h, rows); h = fv.headers; rows = fv.rows; }
+      summary.push([xpTitle(sh.form), rows.length]);
+      if (!rows.length) return;
+      total += rows.length;
+      XLSX.utils.book_append_sheet(wb, xpSheet(h, rows), xpSheetName(xpTitle(sh.form), used));
+    });
+    var range = (month ? month.replace('-', '/') : '全部月份') + '・' + (dept || '全部部門');
+    if (!total) { toast(range + ' 沒有符合的紀錄', true); return; }
+    if (forms.length > 1) {
+      var ws = XLSX.utils.aoa_to_sheet([['匯出範圍', range], ['匯出人', state.user.name], []].concat(summary));
+      ws['!cols'] = [{ wch: 22 }, { wch: 24 }];
+      wb.SheetNames.unshift('總覽'); wb.Sheets['總覽'] = ws;
+    }
+    var fname = (forms.length > 1 ? '表格中心全部表單' : xpTitle(forms[0])) + '_' + (month ? month.replace('-', '') : '全部月份') + '_' + (dept || '全部部門') + '.xlsx';
+    XLSX.writeFile(wb, fname);
+    toast('✅ 已匯出 ' + total + ' 筆（' + fname + '）');
+  } catch (e) {
+    busy(false);
+    toast(String(e && e.message ? e.message : '匯出失敗，請再試一次'), true);
+  }
+}
+/* 財產清冊：直接用 assetList 的資料在前端匯出（含已隱藏，另有「隱藏」欄） */
+async function exportAssets() {
+  busy(true);
+  try {
+    await loadSheetJs();
+    var list = state.assets;
+    if (!list) { var r = await api({ action: 'assetList' }); if (!r.ok) throw new Error('載入清冊失敗'); list = r.assets || []; }
+    busy(false);
+    if (!list.length) { toast('清冊目前沒有資料', true); return; }
+    var cols = [['no', '財產編號'], ['cat', '類別'], ['name', '名稱'], ['brand', '廠牌／廠商'], ['qty', '數量'], ['unit', '單價'], ['total', '總價'],
+      ['date', '購置日期'], ['life', '使用年限'], ['keeper', '放置處／保管人'], ['status', '狀態'], ['note', '備註'], ['hidden', '隱藏'], ['photo', '照片']];
+    if (list.some(function (a) { return a.dept; })) cols.splice(2, 0, ['dept', '部門']);
+    var rows = list.map(function (a) {
+      return cols.map(function (c) {
+        var v = a[c[0]] == null ? '' : String(a[c[0]]);
+        if (c[0] === 'photo' && /^[A-Za-z0-9_-]{20,}$/.test(v)) v = 'https://drive.google.com/file/d/' + v + '/view';
+        return v;
+      });
+    });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, xpSheet(cols.map(function (c) { return c[1]; }), rows), '財產清冊');
+    var fname = '財產清冊_' + toInputDate('').replace(/-/g, '') + '.xlsx';
+    XLSX.writeFile(wb, fname);
+    toast('✅ 已匯出 ' + rows.length + ' 筆（' + fname + '）');
+  } catch (e) { busy(false); toast(String(e && e.message ? e.message : '匯出失敗，請再試一次'), true); }
 }
 
 /* 冰箱呈現：依紀錄日期新→舊（同日下午在前），不顯示紀錄時間與照片欄 */
