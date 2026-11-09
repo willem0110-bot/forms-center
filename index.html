@@ -3393,7 +3393,7 @@ function recentRowOf(form, row) {
   for (var i = 0; i < res.meta.length; i++) if (res.meta[i].row === row) return { res: res, m: res.meta[i], r: res.rows[i] };
   return null;
 }
-function toInputDate(v) { var m = String(v || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : ''; }
+function edInputDate(v) { var m = String(v || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) + '-' + ('0' + m[3]).slice(-2) : ''; }
 function toInputMonth(v) { var m = String(v || '').match(/(\d{4})\D+(\d{1,2})/); return m ? m[1] + '-' + ('0' + m[2]).slice(-2) : ''; }
 function toInputTime(v) { var m = String(v || '').match(/(\d{1,2}):(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : ''; }
 
@@ -3425,7 +3425,7 @@ function openEdit(form, row) {
       el = document.createElement('input');
       el.type = { date: 'date', month: 'month', time: 'time', number: 'number' }[f.type] || 'text';
       if (f.type === 'number') { el.inputMode = 'decimal'; el.min = '0'; el.step = 'any'; }
-      el.value = f.type === 'date' ? toInputDate(v) : f.type === 'month' ? toInputMonth(v) : f.type === 'time' ? toInputTime(v) : v;
+      el.value = f.type === 'date' ? edInputDate(v) : f.type === 'month' ? toInputMonth(v) : f.type === 'time' ? toInputTime(v) : v;
     }
     el.id = id;
     state.edit.orig[f.h] = el.value;
