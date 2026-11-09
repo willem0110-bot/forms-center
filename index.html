@@ -292,6 +292,8 @@ body.manage-mode .manage-box{display:block}
 .recent-table tr.is-del td.act{text-decoration:none}
 .row-btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:4px 9px;cursor:pointer;font-size:13px;font-family:var(--font-body)}
 .del-tag{display:inline-block;font-size:11px;color:var(--warn);border:1px solid var(--warn);border-radius:var(--radius-pill);padding:1px 7px;margin-right:4px;text-decoration:none}
+.ci-sel{border:1px solid var(--line);background:var(--card);border-radius:var(--radius-pill);padding:4px 8px;font-size:12.5px;color:var(--ink);font-family:var(--font-body);max-width:96px;flex-shrink:0}
+.area-head .ren{margin-left:8px;font-size:12px;color:var(--ink-soft);cursor:pointer;text-decoration:underline;font-weight:400}
 .off-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px dashed var(--line);font-size:13.5px}
 .off-row .nm{flex:1;min-width:0;color:var(--ink-soft)}
 .off-row button{border:1px solid var(--line);background:var(--card);border-radius:var(--radius-pill);padding:6px 14px;font-size:13px;cursor:pointer;color:var(--accent);font-weight:700}
@@ -820,11 +822,13 @@ body.manage-mode .manage-box{display:block}
         </select>
       </div>
       <div class="row">
-        <select id="ai-scope" style="flex:1">
+        <select id="ai-scope" style="flex:1" onchange="renderAiPick()">
           <option value="class">僅此班級</option>
           <option value="all">全部班級共用</option>
+          <option value="pick">選擇班級…（可多選）</option>
         </select>
       </div>
+      <div class="chips" id="ai-cls-pick" style="display:none;margin:0 0 8px"></div>
       <div class="row">
         <input type="text" id="ai-name" placeholder="項目名稱（如：紗窗）" style="flex:1">
         <button class="tool-btn on" style="width:90px" onclick="addItem()">＋新增</button>
@@ -1378,6 +1382,8 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.6：清潔項目管理：新增可「選擇班級」多選；園長／主任可直接下拉改頻率、歸屬（共用／班級），區域名稱可改（後端 CleanEdit.gs）
+ * v4.5：教玩具輪替可只填撤下或只填新放入
  * v4.4：清潔紀錄匯出比照紙本「班級環境清潔消毒記錄表」矩陣格式；匯出不含建立時間；近期紀錄預設隱藏已刪除；公共區域不套用全班共用項目、可恢復已移除項目
  * v4.3：所有紀錄表可匯出 Excel（各表頁面＋首頁一次匯出全部＋財產清冊；後端 Export.gs）
  * v4.2：急救箱品項改由後端 FirstAid_Items 驅動（20 項含容量／尺寸、取消急救手冊）；園長／主任可新增、修改、停用、排序品項
@@ -2118,6 +2124,7 @@ function renderCleanForm() {
     dept ? '新增清潔項目（' + dept.name + (state.selectedClass ? '・' + state.selectedClass : '') + '）' : '新增清潔項目（請先選擇部門）';
   document.getElementById('class-manage-box').style.display =
     (document.body.classList.contains('manage-mode') && canManage) ? 'block' : 'none';
+  renderAiPick();
   document.getElementById('add-class-title').textContent =
     dept ? '新增班級（' + dept.name + '・限園長／主任）' : '新增班級（請先選擇部門）';
   renderItems();
@@ -2192,6 +2199,8 @@ function renderItems() {
   renderOffItems();
   if (!state.cleanDept || !state.selectedClass) { updateProgress(); return; }
   var areas = {};
+  var mgr = !!(state.user && state.user.canManageClass);
+  var dClasses = (deptOf(state.cleanDept) || { classes: [] }).classes;
   deptItems().forEach(function (it) {
     if (!areas[it.area]) areas[it.area] = [];
     areas[it.area].push(it);
@@ -2201,7 +2210,8 @@ function renderItems() {
     block.className = 'area-block';
     var head = document.createElement('div');
     head.className = 'area-head';
-    head.innerHTML = '<span>＊' + esc(area) + '</span><span class="mini" onclick="checkArea(\'' + esc(area) + '\')">整區勾選</span>';
+    head.innerHTML = '<span>＊' + esc(area) + (mgr ? '<span class="ren" onclick="renameArea(\'' + esc(area) + '\')">✎ 改名</span>' : '') + '</span>'
+      + '<span class="mini" onclick="checkArea(\'' + esc(area) + '\')">整區勾選</span>';
     block.appendChild(head);
     areas[area].forEach(function (it) {
       var row = document.createElement('label');
@@ -2209,14 +2219,82 @@ function renderItems() {
       row.innerHTML =
         '<input type="checkbox" data-name="' + esc(it.name) + '" data-area="' + esc(it.area) + '" onchange="updateProgress()">' +
         '<span class="iname">' + esc(it.name) + '</span>' +
-        '<span class="ifreq">' + esc(freqLabel(it.freq)) + '</span>' +
-        (it.cls ? '' : '<span class="ifreq">共用</span>') +
+        (mgr ? ciFreqSelect(it) + ciScopeSelect(it, dClasses)
+          : '<span class="ifreq">' + esc(freqLabel(it.freq)) + '</span>' + (it.cls ? '' : '<span class="ifreq">共用</span>')) +
         '<span class="del" data-id="' + esc(it.id) + '" onclick="removeItem(event,\'' + esc(it.id) + '\',\'' + esc(it.name) + '\')">🗑</span>';
       block.appendChild(row);
     });
     wrap.appendChild(block);
   });
   updateProgress();
+}
+
+/* v4.6：園長／主任可直接改頻率、歸屬班級、區域名稱（後端 CleanEdit.gs：updateCleaningItems） */
+var CI_FREQS = [['每日一次', '每日'], ['每週一次', '每週'], ['每月一次', '每月']];
+function ciFreqSelect(it) {
+  var cur = CI_FREQS.some(function (f) { return f[0] === it.freq; }) ? it.freq : '';
+  return '<select class="ci-sel" aria-label="頻率" onclick="event.stopPropagation()" onchange="ciSetFreq(\'' + esc(it.id) + '\',this.value)">'
+    + (cur ? '' : '<option value="">' + esc(freqLabel(it.freq) || '頻率') + '</option>')
+    + CI_FREQS.map(function (f) { return '<option value="' + f[0] + '"' + (f[0] === cur ? ' selected' : '') + '>' + f[1] + '</option>'; }).join('')
+    + '</select>';
+}
+function ciScopeSelect(it, classes) {
+  if (it.cls === state.kitchen) return '<span class="ifreq">廚房</span>';
+  var opts = [['', '共用']].concat(classes.map(function (c) { return [c, c]; }));
+  if (it.cls && classes.indexOf(it.cls) === -1) opts.push([it.cls, it.cls]);
+  return '<select class="ci-sel" aria-label="歸屬" onclick="event.stopPropagation()" onchange="ciSetScope(\'' + esc(it.id) + '\',this.value,this)">'
+    + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === (it.cls || '') ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('')
+    + '</select>';
+}
+async function ciUpdate(ids, set, okMsg) {
+  busy(true);
+  try {
+    var res = await api({ action: 'updateCleaningItems', ids: ids, set: set });
+    busy(false);
+    if (!res.ok) {
+      toast(res.error === 'UNKNOWN_ACTION' ? '後端尚未更新（CleanEdit.gs），請先部署新版本' : (res.message || '修改失敗'), true);
+      renderItems();
+      return;
+    }
+    state.items = res.items;
+    if (res.itemsOff) state.itemsOff = res.itemsOff;
+    renderItems();
+    toast(okMsg);
+  } catch (e) { busy(false); toast('連線失敗', true); renderItems(); }
+}
+function ciSetFreq(id, v) { if (v) ciUpdate([id], { freq: v }, '✅ 已改頻率為「' + freqLabel(v) + '」'); }
+function ciSetScope(id, v, sel) {
+  var it = state.items.filter(function (x) { return x.id === id; })[0];
+  if (it && !it.cls && v && !confirm('「' + it.name + '」改成只屬於「' + v + '」後，其他班級就看不到這個項目。確定嗎？')) { renderItems(); return; }
+  ciUpdate([id], { cls: v }, v ? '✅ 已改為只屬於「' + v + '」' : '✅ 已改為全班共用');
+}
+function renameArea(area) {
+  var ids = deptItems().filter(function (it) { return it.area === area; }).map(function (it) { return it.id; });
+  if (!ids.length) return;
+  var shared = deptItems().some(function (it) { return it.area === area && !it.cls; });
+  var nv = prompt('把區域「' + area + '」改成：' + (shared ? '\n（含全班共用項目，其他班級的同一區也會一起改名）' : ''), area);
+  if (nv == null) return;
+  nv = nv.trim();
+  if (!nv || nv === area) return;
+  ciUpdate(ids, { area: nv }, '✅ 區域已改名為「' + nv + '」');
+}
+function renderAiPick() {
+  var box = document.getElementById('ai-cls-pick');
+  if (!box) return;
+  var on = document.getElementById('ai-scope').value === 'pick';
+  box.style.display = on ? 'flex' : 'none';
+  if (!on) return;
+  var dept = deptOf(state.cleanDept);
+  state.aiPick = (state.aiPick || []).filter(function (c) { return dept && dept.classes.indexOf(c) !== -1; });
+  box.innerHTML = '';
+  if (!dept) { box.innerHTML = '<span class="chips-empty">請先選擇部門</span>'; return; }
+  dept.classes.forEach(function (c) {
+    box.appendChild(chipBtn(c, state.aiPick.indexOf(c) !== -1, function (name) {
+      var i = state.aiPick.indexOf(name);
+      if (i === -1) state.aiPick.push(name); else state.aiPick.splice(i, 1);
+      renderAiPick();
+    }));
+  });
 }
 
 function freqLabel(f) { return String(f) === '每日一次' ? '每日' : f; }
@@ -2254,6 +2332,24 @@ async function addItem() {
   var name = document.getElementById('ai-name').value.trim();
   var freq = document.getElementById('ai-freq').value;
   if (!area || !name) { toast('請填寫區域與項目名稱', true); return; }
+  if (scope === 'pick') { // v4.6：一次加到多個指定班級（每班各一筆）
+    var picks = (state.aiPick || []).slice();
+    if (!picks.length) { toast('請點選要加入的班級', true); return; }
+    busy(true);
+    try {
+      var last = null;
+      for (var i = 0; i < picks.length; i++) {
+        last = await api({ action: 'addCleaningItem', dept: state.cleanDept, className: picks[i], area: area, name: name, freq: freq, form: state.cleanForm });
+        if (!last.ok) { busy(false); toast((last.message || '新增失敗') + '（' + picks[i] + '）', true); return; }
+      }
+      busy(false);
+      state.items = last.items;
+      renderItems();
+      document.getElementById('ai-name').value = '';
+      toast('✅ 已新增「' + name + '」到 ' + picks.join('、'));
+    } catch (e) { busy(false); toast('連線失敗', true); }
+    return;
+  }
   busy(true);
   try {
     var res = await api({
