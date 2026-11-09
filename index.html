@@ -404,6 +404,19 @@ body.manage-mode .manage-box{display:block}
 .fa-flag.expired{color:var(--warn)}
 .fa-flag.soon{color:#B07A1F}
 .fa-add{border:none;background:none;color:var(--accent);font-size:13px;cursor:pointer;padding:4px 0;font-family:var(--font-body)}
+.fa-head .spec{font-size:12.5px;font-weight:500;color:var(--ink-soft);margin-left:4px}
+.fa-manage{background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-tile);padding:12px 14px;margin:0 0 12px}
+.fa-m-title{font-family:var(--font-title);font-weight:700;font-size:15px;margin-bottom:8px}
+.fa-m-row{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.fa-m-row > input[type=text]{flex:1;min-width:0;padding:9px 10px;font-size:14px}
+.fa-m-row > .submit-btn,.fa-m-row > .secondary-btn{flex:1;padding:11px 8px;font-size:14px}
+.fa-m-chk{display:flex;align-items:center;gap:6px;font-size:13.5px;flex:1;white-space:nowrap}
+.fa-m-chk input{width:18px;height:18px}
+.fa-m-item{display:flex;align-items:center;gap:6px;padding:8px 0;border-top:1px dashed var(--line);font-size:14px}
+.fa-m-item .nm{flex:1;min-width:0}
+.fa-m-item .nm small{color:var(--ink-soft);margin-left:4px}
+.fa-m-item.off .nm{color:var(--idle);text-decoration:line-through}
+.fa-m-item button{min-width:36px;height:36px;border:1px solid var(--line);background:var(--card);border-radius:10px;font-size:13px;cursor:pointer;color:var(--ink);padding:0 8px}
 .fa-summary{font-size:13px;line-height:1.7;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius-tile);padding:10px 14px;margin-top:6px}
 .field-row > input{flex:1;min-width:0;padding:10px 6px;font-size:14px}
 .field-row > select{flex:1;min-width:0}
@@ -598,7 +611,7 @@ body.manage-mode .manage-box{display:block}
       <div>
         <h3>急救箱耗材檢核</h3>
         <div class="en-name">First-Aid Kit Monthly Check</div>
-        <p>15 項耗材數量・各批效期・補充處置<br>急救箱內容照片必附（訪視 衛_9・稽查 6-3）</p>
+        <p>耗材數量（含容量／尺寸）・各批效期・補充處置<br>急救箱內容照片必附（訪視 衛_9・稽查 6-3）</p>
         <div class="st" id="st-firstaid"></div>
       </div>
       <div class="arrow">→</div>
@@ -1163,8 +1176,19 @@ body.manage-mode .manage-box{display:block}
     <div class="field"><label>部門</label><div class="chips" id="fa-dept-chips"></div></div>
     <div class="field"><label>急救箱位置<span class="hint">例如：托嬰部辦公室、2F 走廊</span></label><input type="text" id="fa-location" maxlength="40" placeholder="托嬰部辦公室"></div>
     <div class="field">
-      <label>15 項耗材・數量與效期<span class="hint">同品項不同批效期不同，按「＋ 新增一批」分開登記</span></label>
+      <label>耗材・數量與效期<span class="hint">同品項不同批效期不同，按「＋ 新增一批」分開登記</span></label>
       <button type="button" class="secondary-btn" style="margin:0 0 8px" onclick="faPrefill()">↺ 帶入這個急救箱上次的紀錄</button>
+      <button type="button" class="secondary-btn" id="fa-manage-btn" style="margin:0 0 8px;display:none" onclick="faToggleManage()">⚙️ 管理品項（園長／主任）</button>
+      <div class="fa-manage" id="fa-manage" style="display:none">
+        <div class="fa-m-title">品項管理<span class="en-name">Manage Items</span></div>
+        <div class="fa-m-form">
+          <input type="hidden" id="fam-id">
+          <div class="fa-m-row"><input type="text" id="fam-name" maxlength="30" placeholder="品項名稱，例如：彈性繃帶"><input type="text" id="fam-spec" maxlength="20" placeholder="規格／尺寸，例如：3 吋"></div>
+          <div class="fa-m-row"><input type="text" id="fam-unit" maxlength="5" placeholder="單位：卷"><label class="fa-m-chk"><input type="checkbox" id="fam-noexp"> 無效期品項</label></div>
+          <div class="fa-m-row"><button type="button" class="submit-btn" style="margin:0" id="fam-save" onclick="faSaveItem()">＋ 新增品項</button><button type="button" class="secondary-btn" style="margin:0;display:none" id="fam-cancel" onclick="faEditItem('')">取消修改</button></div>
+        </div>
+        <div id="fa-m-list"></div>
+      </div>
       <div id="fa-rows"></div>
       <div class="fa-summary" id="fa-summary"></div>
     </div>
@@ -1331,6 +1355,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.2：急救箱品項改由後端 FirstAid_Items 驅動（20 項含容量／尺寸、取消急救手冊）；園長／主任可新增、修改、停用、排序品項
  * v3.3：急救箱改登記數量＋效期，同品項可分多批；有／缺、最近效期自動判定；可帶入上次紀錄
  * v4.2：留樣「磅重照片」改名「留樣照片」，拿掉拍攝說明；首頁卡片說明改每道菜 ≥ 50g
  * v4.1：留樣取消留樣類型（每道菜至少 50g）；菜色後面直接填重量，可「＋新增菜色」多道一次送出（後端 Compliance.gs v1.2）
@@ -3125,13 +3150,30 @@ async function loadRotationStatus() {
  *   有效數量 = 未過期批次數量合計（無效期品項全部算）；0 → 缺
  *   已過期批次 → 標紅，需在補充／處置說明交代；30 天內到期 → 標黃提醒 */
 var FA_SOON_DAYS = 30;
+/* v4.2：品項改由後端 FirstAid_Items 分頁驅動（園長／主任可管理）
+ *   後端尚未更新（op items 不存在）時沿用下列舊 15 項，送出格式與舊後端一致 */
 var FA_ITEMS = [
   ['體溫計', '支', true], ['無菌紗布', '包'], ['OK 繃', '片'], ['繃帶', '卷'], ['三角巾', '條'],
   ['棉花棒', '包'], ['生理食鹽水', '瓶'], ['優碘／消毒液', '瓶'], ['剪刀', '把', true], ['鑷子', '支', true],
   ['醫用膠帶', '卷'], ['冰敷袋', '個'], ['一次性手套', '雙'], ['口罩', '個'], ['急救手冊／緊急聯絡表', '份', true]
-].map(function (a, i) { return { key: 'i' + (i + 1), label: a[0], unit: a[1], noExp: !!a[2] }; });
+].map(function (a, i) { return { key: 'i' + (i + 1), id: '', label: a[0], name: a[0], spec: '', unit: a[1], noExp: !!a[2] }; });
+state.faAll = []; state.faCanManage = false;
 
-function openFirstAid() {
+function faApplyItems(list, canManage) {
+  state.faAll = list || [];
+  state.faCanManage = !!canManage;
+  FA_ITEMS = state.faAll.filter(function (x) { return x.active; }).map(function (x) {
+    return { key: x.id, id: x.id, label: x.label, name: x.name, spec: x.spec, unit: x.unit, noExp: !!x.noExp };
+  });
+  faReset(true);
+}
+async function faLoadItems() {
+  try {
+    var r = await api({ action: 'firstAid', op: 'items' });
+    if (r.ok && Array.isArray(r.items)) faApplyItems(r.items, r.canManage);
+  } catch (e) { }
+}
+async function openFirstAid() {
   if (!state.faDept) state.faDept = defaultDept();
   document.getElementById('fa-by-name').textContent = state.user ? state.user.name : '';
   if (!document.getElementById('fa-month').value) document.getElementById('fa-month').value = ymInput(0);
@@ -3139,14 +3181,90 @@ function openFirstAid() {
   if (!state.faB) faReset();
   renderFaForm();
   openForm('firstaid');
+  if (!state.faLoaded) {
+    busy(true);
+    await faLoadItems();
+    busy(false);
+    state.faLoaded = true;
+    renderFaForm();
+  }
 }
-function faReset() {
+/* keep=true：保留已填的品項，只補新品項、移除已停用品項 */
+function faReset(keep) {
+  var old = keep && state.faB ? state.faB : {};
   state.faB = {};
-  FA_ITEMS.forEach(function (it) { state.faB[it.key] = [{ qty: '', exp: '' }]; });
+  FA_ITEMS.forEach(function (it) { state.faB[it.key] = old[it.key] || [{ qty: '', exp: '' }]; });
 }
+function faToggleManage() {
+  var box = document.getElementById('fa-manage');
+  var show = box.style.display === 'none';
+  box.style.display = show ? 'block' : 'none';
+  if (show) { faEditItem(''); renderFaManage(); }
+}
+function renderFaManage() {
+  var wrap = document.getElementById('fa-m-list');
+  if (!wrap) return;
+  var n = state.faAll.length;
+  wrap.innerHTML = state.faAll.map(function (x, i) {
+    return '<div class="fa-m-item' + (x.active ? '' : ' off') + '">'
+      + '<span class="nm">' + esc(x.label) + '<small>' + esc(x.unit) + (x.noExp ? '・無效期' : '') + (x.active ? '' : '・停用') + '</small></span>'
+      + '<button type="button" aria-label="上移" ' + (i === 0 ? 'disabled' : '') + ' onclick="faMoveItem(\'' + x.id + '\',-1)">↑</button>'
+      + '<button type="button" aria-label="下移" ' + (i === n - 1 ? 'disabled' : '') + ' onclick="faMoveItem(\'' + x.id + '\',1)">↓</button>'
+      + '<button type="button" onclick="faEditItem(\'' + x.id + '\')">改</button>'
+      + '<button type="button" onclick="faToggleItem(\'' + x.id + '\')">' + (x.active ? '停用' : '啟用') + '</button>'
+      + '</div>';
+  }).join('');
+}
+function faEditItem(id) {
+  var x = state.faAll.filter(function (y) { return y.id === id; })[0];
+  document.getElementById('fam-id').value = x ? x.id : '';
+  document.getElementById('fam-name').value = x ? x.name : '';
+  document.getElementById('fam-spec').value = x ? x.spec : '';
+  document.getElementById('fam-unit').value = x ? x.unit : '';
+  document.getElementById('fam-noexp').checked = x ? !!x.noExp : false;
+  document.getElementById('fam-save').textContent = x ? '儲存修改' : '＋ 新增品項';
+  document.getElementById('fam-cancel').style.display = x ? '' : 'none';
+  if (x) document.getElementById('fam-name').focus();
+}
+async function faItemCall(payload, okMsg) {
+  busy(true);
+  try {
+    var r = await api(payload);
+    busy(false);
+    if (!r.ok) { toast(r.message || '儲存失敗', true); return false; }
+    faApplyItems(r.items, r.canManage);
+    renderFaManage();
+    renderFaForm();
+    if (okMsg) toast(okMsg);
+    return true;
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); return false; }
+}
+async function faSaveItem() {
+  var id = document.getElementById('fam-id').value;
+  var item = {
+    id: id,
+    name: document.getElementById('fam-name').value.trim(),
+    spec: document.getElementById('fam-spec').value.trim(),
+    unit: document.getElementById('fam-unit').value.trim(),
+    noExp: document.getElementById('fam-noexp').checked
+  };
+  if (!item.name) { toast('請填品項名稱', true); return; }
+  if (!item.unit) { toast('請填單位（例如：包、瓶、片）', true); return; }
+  if (id) { var cur = state.faAll.filter(function (y) { return y.id === id; })[0]; if (cur) item.active = cur.active; }
+  if (await faItemCall({ action: 'firstAid', op: 'saveItem', item: item }, id ? '✅ 已修改品項' : '✅ 已新增品項')) faEditItem('');
+}
+function faToggleItem(id) {
+  var x = state.faAll.filter(function (y) { return y.id === id; })[0];
+  if (!x) return;
+  faItemCall({ action: 'firstAid', op: 'saveItem', item: { id: x.id, name: x.name, spec: x.spec, unit: x.unit, noExp: x.noExp, active: !x.active } },
+    x.active ? '已停用「' + x.label + '」（歷史紀錄保留）' : '已啟用「' + x.label + '」');
+}
+function faMoveItem(id, dir) { faItemCall({ action: 'firstAid', op: 'moveItem', id: id, dir: dir }); }
 function renderFaForm() {
   if (!state.faB) faReset(); // App 初始化時就會呼叫，批次資料要先備妥
   renderDeptChips('fa-dept-chips', 'faDept');
+  var mb = document.getElementById('fa-manage-btn');
+  if (mb) mb.style.display = state.faCanManage ? '' : 'none';
   var wrap = document.getElementById('fa-rows');
   wrap.innerHTML = '';
   FA_ITEMS.forEach(function (it) {
@@ -3161,7 +3279,7 @@ function renderFaForm() {
 function renderFaItem(it) {
   var box = document.getElementById('fa-item-' + it.key);
   var list = state.faB[it.key];
-  var h = '<div class="fa-head"><span class="lbl">' + esc(it.label) + '</span>'
+  var h = '<div class="fa-head"><span class="lbl">' + esc(it.name || it.label) + (it.spec ? '<span class="spec">' + esc(it.spec) + '</span>' : '') + '</span>'
     + '<span class="tot" id="fa-tot-' + it.key + '"></span><span class="fa-badge idle" id="fa-st-' + it.key + '">未填</span></div>';
   list.forEach(function (b, i) {
     h += '<div class="fa-batch">'
@@ -3257,7 +3375,7 @@ async function faPrefill() {
     var base = faBaseDate();
     faReset();
     FA_ITEMS.forEach(function (it) {
-      var src = (r.batches[it.label] || []).filter(function (b) { return it.noExp || !b.exp || toInputDate(b.exp) >= base; });
+      var src = (r.batches[it.label] || (it.id && r.batches[it.id]) || []).filter(function (b) { return it.noExp || !b.exp || toInputDate(b.exp) >= base; });
       if (src.length) state.faB[it.key] = src.map(function (b) { return { qty: String(b.qty), exp: b.exp ? toInputDate(b.exp) : '' }; });
     });
     renderFaForm();
@@ -3297,7 +3415,7 @@ async function submitFirstAid() {
     });
     busy(false);
     if (!res.ok) { toast(res.message || '送出失敗', true); return; }
-    toast(lack.length ? '⚠️ 已記錄，缺：' + lack.join('、') : '✅ ' + month.replace('-', '/') + ' 急救箱檢核已記錄（15 項齊全）', !!lack.length);
+    toast(lack.length ? '⚠️ 已記錄，缺：' + lack.join('、') : '✅ ' + month.replace('-', '/') + ' 急救箱檢核已記錄（' + FA_ITEMS.length + ' 項齊全）', !!lack.length);
     afterSubmit();
     faReset();
     ['fa-location', 'fa-note'].forEach(function (id) { document.getElementById(id).value = ''; });
@@ -3310,7 +3428,7 @@ async function loadFirstAidStatus() {
     var r = await api({ action: 'firstAid', op: 'status', dept: COMP_DEPT });
     if (!r.ok) return;
     setSt('st-firstaid', r.done ? (r.lack ? 'part' : 'ok') : 'todo',
-      r.done ? ('本月已檢核' + (r.lack ? '・缺 ' + r.lack + ' 項' : '・15 項齊全')) : '本月尚未檢核');
+      r.done ? ('本月已檢核' + (r.lack ? '・缺 ' + r.lack + ' 項' : '・全部齊全')) : '本月尚未檢核');
   } catch (e) { }
 }
 
