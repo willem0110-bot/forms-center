@@ -359,6 +359,22 @@ body.manage-mode .manage-box{display:block}
 .rot-self button{border:1px solid var(--accent);color:var(--accent);background:#fff;border-radius:var(--radius-pill);padding:0 16px;font-size:14px;font-family:var(--font-body);white-space:nowrap;cursor:pointer}
 .rot-photos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .rot-photos .dropzone{padding:16px 8px;font-size:14px}
+.bk-card{border:1px solid var(--line);border-radius:var(--radius-tile);padding:12px 14px;margin-top:10px;background:var(--card)}
+.bk-card.warn{border-color:var(--warn);background:#FFF8F4}
+.bk-head{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}
+.bk-head .t{flex:1;min-width:0;font-weight:700;font-size:15px}
+.bk-head .t small{display:block;font-weight:400;color:var(--ink-soft);font-size:12px;margin-top:2px}
+.bk-head .x{border:none;background:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 4px}
+.bk-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--line);font-size:13.5px}
+.bk-row .lb{flex:1;min-width:0}
+.bk-row select{max-width:150px;padding:6px 8px;font-size:13px}
+.bk-seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--radius-pill);overflow:hidden;flex-shrink:0}
+.bk-seg button{border:none;background:#fff;padding:6px 11px;font-size:12.5px;cursor:pointer;font-family:var(--font-body);color:var(--ink)}
+.bk-seg button.on{background:var(--ok);color:#fff;font-weight:700}
+.bk-seg button.on.bad{background:var(--warn)}
+.bk-more{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.bk-more textarea,.bk-more input[type=text],.bk-more input[type=date]{width:100%;margin-top:4px;font-size:13.5px}
+.bk-more .chips{margin-top:4px}
 .rot-by{font-size:13px;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:14px}
 .rot-by b{color:var(--ink)}
 .card.static{cursor:default}
@@ -1241,6 +1257,11 @@ body.manage-mode .manage-box{display:block}
     <button class="back-btn" onclick="goHome()">‹ 返回</button>
     <span class="form-title">教玩具輪替紀錄<span class="en-name">Toy &amp; Material Rotation</span></span>
   </div>
+  <div class="tabbar">
+    <button id="rot-tab-toy" class="active" onclick="switchRotTab('toy')">教玩具輪替</button>
+    <button id="rot-tab-book" onclick="switchRotTab('book')">圖書更換檢修</button>
+  </div>
+  <div id="rot-toy-wrap">
   <div class="panel">
     <div class="rot-by">更換人員：<b id="rot-by-name"></b>（依您的 LINE 帳號自動帶入）</div>
     <div class="field"><label>更換日期</label><input type="date" id="rot-date"></div>
@@ -1289,6 +1310,33 @@ body.manage-mode .manage-box{display:block}
     <button class="secondary-btn" onclick="loadRecent('rotation')">📋 查看近期紀錄</button>
   </div>
   <div class="panel" id="rotation-recent" style="display:none"></div>
+  </div>
+  <!-- v4.8：圖書更換檢修（對應圖書管理總表；書從財產清冊「圖書」類挑選） -->
+  <div id="rot-book-wrap" style="display:none">
+  <div class="panel">
+    <div class="rot-by">檢查／登錄人：<b id="bk-by-name"></b>（依您的 LINE 帳號自動帶入）</div>
+    <div class="field"><label>檢查日期</label><input type="date" id="bk-date"></div>
+    <div class="field"><label>部門</label><div class="chips" id="bk-dept-chips"></div></div>
+    <div class="field"><label>放置班級／位置</label><div class="chips" id="bk-class-chips"></div></div>
+    <div class="field">
+      <label>圖書<span class="hint">從財產清冊（類別＝圖書）挑選，可一次多本</span></label>
+      <div class="rot-search">
+        <input type="text" id="bk-q" placeholder="🔍 搜尋財產清冊：書名、編號或出版社" autocomplete="off" oninput="bkSearch()" onfocus="bkSearch()">
+        <div class="rot-list" id="bk-list"></div>
+      </div>
+      <div id="bk-cards"></div>
+    </div>
+    <div class="field">
+      <label>照片<span class="hint">選填・異常書況建議拍照</span></label>
+      <input type="file" id="pp-bk" accept="image/*" style="display:none" onchange="pickPhoto('bk', this)">
+      <button type="button" class="dropzone" onclick="document.getElementById('pp-bk').click()">📷 拍照／選擇照片</button>
+      <img class="pp-preview" id="pv-bk" alt="圖書照片預覽">
+    </div>
+    <button class="submit-btn" onclick="submitBooks()">送出紀錄</button>
+    <button class="secondary-btn" onclick="loadRecent('books')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="books-recent" style="display:none"></div>
+  </div>
 </div>
 
 <!-- ===== 感控月檢 ===== -->
@@ -1382,6 +1430,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.8：教玩具輪替頁加「圖書更換檢修」分頁（後端 BookCheck.gs）、匯出圖書管理總表；清潔匯出同日多筆以最後送出為準、欄位與目前項目同步、註 3 依系統濃度選項
  * v4.7：消毒水濃度可複選
  * v4.6：清潔項目管理：新增可「選擇班級」多選；園長／主任可直接下拉改頻率、歸屬（共用／班級），區域名稱可改（後端 CleanEdit.gs）
  * v4.5：教玩具輪替可只填撤下或只填新放入
@@ -1684,7 +1733,7 @@ var EXPORT_FORMS = [
   { form: 'sample', title: '餐點48小時留樣' }, { form: 'light', title: '照度與溫濕度' },
   { form: 'pest', title: '病媒防制與衛生檢核' }, { form: 'cctv', title: '監視器與影像管理' },
   { form: 'infection', title: '衛生保健與感控月檢' }, { form: 'firstaid', title: '急救箱耗材檢核' },
-  { form: 'rotation', title: '教玩具輪替' }, { form: 'finance', title: '收退費對帳', manager: true },
+  { form: 'rotation', title: '教玩具輪替' }, { form: 'books', title: '圖書管理總表' }, { form: 'finance', title: '收退費對帳', manager: true },
   { form: 'toy', title: '教玩具檢修' }
 ];
 function xpTitle(form) { var f = EXPORT_FORMS.filter(function (x) { return x.form === form; })[0]; return f ? f.title : form; }
@@ -1750,7 +1799,19 @@ function cleanOrgTitle(dept) { return dept === '托嬰部' ? '新竹市私立星
 function cleanMatrixSheets(headers, rows) {
   var ix = function (n) { return headers.indexOf(n); };
   var iD = ix('紀錄日期'), iF = ix('表單'), iDept = ix('部門'), iC = ix('班級'), iItems = ix('完成項目'),
-    iConc = ix('消毒水濃度'), iUv = ix('紫外線燈時數'), iWho = ix('清潔人員');
+    iConc = ix('消毒水濃度'), iUv = ix('紫外線燈時數'), iWho = ix('清潔人員'), iTs = ix('建立時間戳');
+  // v4.8：同班同表單同一天有多筆時，以最後送出的那筆為準（重填／修正過的紀錄才會同步）
+  var latest = {};
+  rows.forEach(function (r, i) {
+    var k = [r[iDept], r[iC], r[iF] || '每日', String(r[iD] || '').replace(/^'/, '')].join('|');
+    var ts = iTs >= 0 ? String(r[iTs] || '') : '';
+    var cur = latest[k];
+    if (!cur || ts > cur.ts || (ts === cur.ts && i > cur.i)) latest[k] = { ts: ts, i: i };
+  });
+  rows = rows.filter(function (r, i) {
+    var k = [r[iDept], r[iC], r[iF] || '每日', String(r[iD] || '').replace(/^'/, '')].join('|');
+    return latest[k].i === i;
+  });
   var groups = {}, order = [];
   rows.forEach(function (r) {
     var m = String(r[iD] || '').match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
@@ -1776,7 +1837,6 @@ function cleanMatrixSheets(headers, rows) {
   var showYm = Object.keys(multiMonth).length > 1;
   return order.map(function (k) {
     var g = groups[k];
-    var all = (state.items || []).concat(state.itemsOff || []);
     var cols = cleanColumns(itemsFor(g.dept, g.cls, g.form));
     var byName = function (n) { var o = []; cols.forEach(function (c, i) { if (c.name === n) o.push(i); }); return o; };
     var days = {};
@@ -1785,11 +1845,7 @@ function cleanMatrixSheets(headers, rows) {
       var used = {};
       String(x.r[iItems] || '').split('、').map(function (t) { return t.trim(); }).filter(String).forEach(function (t) {
         var idx = byName(t);
-        if (!idx.length) { // 已移除或改名的項目：補在最後
-          var off = all.filter(function (it) { return it.name === t; })[0];
-          cols.push({ area: off ? off.area : '其他', name: t, freq: off ? freqLabel(off.freq) : '' });
-          idx = [cols.length - 1];
-        }
+        if (!idx.length) return; // v4.8：欄位與系統目前的項目同步；已移除的舊項目不另開欄
         var pick = idx.filter(function (i) { return !used[i]; })[0];
         if (pick === undefined) pick = idx[0];
         used[pick] = 1; day.marks[pick] = 1;
@@ -1843,7 +1899,7 @@ function cleanMatrixSheets(headers, rows) {
     var tableEnd = aoa.length - 1;
     var notes = ['註 1：＊代表依中心之環境，加註消毒的頻率（見欄名下方）。✓＝當日已完成清潔消毒。',
       '註 2：本表依工作項目，清潔消毒後如實記錄（資料來源：星安表格中心）。',
-      '註 3：消毒方式：(1) 一般消毒：配製 500ppm 含氯漂白水進行擦拭或浸泡。(2) 針對病童分泌物或排泄物污染之物品，以 1000ppm 含氯漂白水消毒及接受陽光曝曬。',
+      '註 3：消毒方式：本' + (g.dept === '托嬰部' ? '中心' : '園') + '使用 ' + ((state.concOpts && state.concOpts.length) ? state.concOpts.join('／') : '漂白水／次氯酸水') + '，當日實際使用濃度見「消毒水濃度」欄。',
       '檢查人員：＿＿＿＿＿＿＿＿　　　　主任：＿＿＿＿＿＿＿＿'];
     if (g.dept === '托嬰部') notes.push('註：此表格為搭配訪視指標「教保活動－嬰幼兒托育設備、材料及活動實施－當天使用的各種教（玩）具或素材應清潔，並留有相關紀錄。」');
     notes.forEach(function (t) { var r = blank(); r[0] = t; aoa.push(r); merges.push({ s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: nC - 1 } }); });
@@ -1905,6 +1961,7 @@ async function exportForms(forms, key) {
       summary.push([xpTitle(sh.form), rows.length]);
       if (!rows.length) return;
       total += rows.length;
+      if (sh.form === 'books') { XLSX.utils.book_append_sheet(wb, bookSheet(h, rows, dept), xpSheetName('圖書管理總表', used)); return; }
       if (sh.form === 'cleaning') { // v4.4：比照紙本「班級環境清潔消毒記錄表」，每班每月一頁
         cleanMatrixSheets(h, rows).forEach(function (m) { XLSX.utils.book_append_sheet(wb, m.ws, xpSheetName(m.name, used)); });
         return;
@@ -3471,6 +3528,199 @@ async function submitCctvWeekly() {
 var ROT_DOMAINS = ['粗大動作', '精細動作', '感官', '語言', '認知', '社會情緒'];
 var ROT_REASONS = ['依孩子發展階段', '孩子興趣轉移', '季節或主題', '損壞汰換'];
 var ROT_SKIP = ['公共區域'];
+/* ============================================================
+ * v4.8：圖書更換檢修（後端 BookCheck.gs：action=bookCheck）
+ * ============================================================ */
+state.rotTab = 'toy';
+state.bk = [];
+function switchRotTab(tab) {
+  state.rotTab = tab;
+  document.getElementById('rot-tab-toy').classList.toggle('active', tab === 'toy');
+  document.getElementById('rot-tab-book').classList.toggle('active', tab === 'book');
+  document.getElementById('rot-toy-wrap').style.display = tab === 'toy' ? '' : 'none';
+  document.getElementById('rot-book-wrap').style.display = tab === 'book' ? '' : 'none';
+  if (tab === 'book') openBooks();
+}
+async function openBooks() {
+  if (!state.bkDept) state.bkDept = state.rotDept || defaultDept();
+  if (!document.getElementById('bk-date').value) document.getElementById('bk-date').value = toInputDate('');
+  document.getElementById('bk-by-name').textContent = state.user ? state.user.name : '';
+  renderBookForm();
+  if (!state.bkMeta) {
+    busy(true);
+    try {
+      var r = await api({ action: 'bookCheck', op: 'books' });
+      busy(false);
+      if (!r.ok) { toast(r.error === 'UNKNOWN_ACTION' ? '後端尚未更新（BookCheck.gs），請先部署新版本' : (r.message || '圖書清單載入失敗'), true); return; }
+      state.bkMeta = r;
+      renderBookForm();
+    } catch (e) { busy(false); toast('連線失敗', true); }
+  }
+}
+function renderBookForm() {
+  renderDeptChips('bk-dept-chips', 'bkDept', function () { state.bkClass = ''; renderBkClasses(); });
+  renderBkClasses();
+  renderBkCards();
+}
+function renderBkClasses() {
+  var d = deptOf(state.bkDept);
+  var wrap = document.getElementById('bk-class-chips');
+  if (!d || !d.classes.length) { wrap.innerHTML = '<span class="chips-empty">請先選擇部門</span>'; return; }
+  renderChips('bk-class-chips', d.classes, 'bkClass');
+}
+function bkSearch() {
+  var list = document.getElementById('bk-list');
+  list.className = 'rot-list on';
+  if (!state.bkMeta) { list.innerHTML = '<div class="rot-opt">圖書清單載入中…</div>'; return; }
+  var q = document.getElementById('bk-q').value.trim().toLowerCase();
+  var picked = state.bk.map(function (b) { return b.no; });
+  var hits = state.bkMeta.books.filter(function (b) {
+    return picked.indexOf(b.no) === -1 && (!q || (b.name + ' ' + b.no + ' ' + b.pub + ' ' + b.keeper).toLowerCase().indexOf(q) !== -1);
+  }).slice(0, 40);
+  if (!hits.length) { list.innerHTML = '<div class="rot-opt" style="color:var(--ink-soft)">' + (state.bkMeta.books.length ? '找不到符合的書' : '財產清冊還沒有「圖書」類的財產，請先到財產清冊登錄') + '</div>'; return; }
+  list.innerHTML = hits.map(function (b) {
+    return '<div class="rot-opt" onclick="bkPick(\'' + esc(b.no) + '\')"><span>' + esc(b.name) + (b.pub ? '<span class="no">・' + esc(b.pub) + '</span>' : '') + '</span><span class="no">' + esc(b.no) + '</span></div>';
+  }).join('');
+}
+document.addEventListener('click', function (e) {
+  var w = document.getElementById('bk-list');
+  if (w && !w.parentElement.contains(e.target)) w.className = 'rot-list';
+});
+function bkPick(no) {
+  var b = state.bkMeta.books.filter(function (x) { return x.no === no; })[0];
+  if (!b || bkFind(no)) return;
+  var last = b.last || null, checks = {};
+  state.bkMeta.checks.forEach(function (c) { checks[c] = '正常'; });
+  state.bk.push({
+    no: b.no, name: b.name, pub: b.pub,
+    action: last && last.action !== '撤下' && last.cls === state.bkClass ? '定期檢查' : '新放入',
+    cat: last && last.cat ? String(last.cat).replace(/^'/, '') : '', checks: checks, result: '留存',
+    problem: '', dispose: [], follow: '', doneDate: '', after: '', note: ''
+  });
+  document.getElementById('bk-q').value = '';
+  document.getElementById('bk-list').className = 'rot-list';
+  renderBkCards();
+}
+function bkFind(no) { return state.bk.filter(function (x) { return x.no === no; })[0]; }
+function bkSet(no, key, val, rerender) {
+  var b = bkFind(no); if (!b) return;
+  if (key === 'dispose') { var i = b.dispose.indexOf(val); if (i === -1) b.dispose.push(val); else b.dispose.splice(i, 1); }
+  else if (key.indexOf('chk:') === 0) b.checks[key.slice(4)] = val;
+  else b[key] = val;
+  if (rerender) renderBkCards();
+}
+function bkRemove(no) { state.bk = state.bk.filter(function (x) { return x.no !== no; }); renderBkCards(); }
+function bkAbnormal(b) { return Object.keys(b.checks).some(function (k) { return b.checks[k] === '異常'; }) || b.result !== '留存'; }
+function bkSeg(no, key, opts, cur, badOpt) {
+  return '<span class="bk-seg">' + opts.map(function (o) {
+    return '<button type="button" class="' + (o === cur ? 'on' + (badOpt && badOpt.indexOf(o) !== -1 ? ' bad' : '') : '') + '" onclick="bkSet(\'' + esc(no) + '\',\'' + key + '\',\'' + o + '\',true)">' + o + '</button>';
+  }).join('') + '</span>';
+}
+function renderBkCards() {
+  var wrap = document.getElementById('bk-cards');
+  if (!wrap) return;
+  if (!state.bk.length) { wrap.innerHTML = ''; return; }
+  var m = state.bkMeta || { cats: [], checks: [], actions: ['新放入', '撤下', '定期檢查'], results: ['留存', '破損', '淘汰'], dispose: [], after: [] };
+  wrap.innerHTML = state.bk.map(function (b) {
+    var no = esc(b.no), ab = bkAbnormal(b);
+    var h = '<div class="bk-card' + (ab ? ' warn' : '') + '">'
+      + '<div class="bk-head"><span class="t">' + esc(b.name) + '<small>' + no + (b.pub ? '・' + esc(b.pub) : '') + '</small></span>'
+      + '<button type="button" class="x" aria-label="移除" onclick="bkRemove(\'' + no + '\')">✕</button></div>'
+      + '<div class="bk-row"><span class="lb">動作</span>' + bkSeg(b.no, 'action', m.actions, b.action) + '</div>'
+      + '<div class="bk-row"><span class="lb">分類</span><select onchange="bkSet(\'' + no + '\',\'cat\',this.value)"><option value="">請選擇</option>'
+      + m.cats.map(function (c) { return '<option value="' + c.code + '"' + (c.code === b.cat ? ' selected' : '') + '>' + c.code + ' ' + esc(c.name) + '</option>'; }).join('') + '</select></div>';
+    m.checks.forEach(function (c) { h += '<div class="bk-row"><span class="lb">' + esc(c) + '</span>' + bkSeg(b.no, 'chk:' + c, ['正常', '異常'], b.checks[c], ['異常']) + '</div>'; });
+    h += '<div class="bk-row"><span class="lb">檢查結果</span>' + bkSeg(b.no, 'result', m.results, b.result, ['破損', '淘汰']) + '</div>';
+    if (ab) {
+      h += '<div class="bk-more"><div style="font-size:13px;font-weight:700">問題描述／異常情形<span style="font-weight:400;color:var(--warn)">（必填）</span></div>'
+        + '<textarea maxlength="200" placeholder="例如：第 3 頁撕破、封面發霉" oninput="bkSet(\'' + no + '\',\'problem\',this.value)">' + esc(b.problem) + '</textarea>'
+        + '<div style="font-size:13px;font-weight:700;margin-top:8px">立即處置<span style="font-weight:400;color:var(--ink-soft)">（可複選）</span></div><div class="chips">'
+        + m.dispose.map(function (d) { return '<button type="button" class="chip' + (b.dispose.indexOf(d) !== -1 ? ' active' : '') + '" onclick="bkSet(\'' + no + '\',\'dispose\',\'' + d + '\',true)">' + d + '</button>'; }).join('') + '</div>'
+        + '<div style="font-size:13px;font-weight:700;margin-top:8px">後續處理（清潔／維修／汰換）<span style="font-weight:400;color:var(--ink-soft)">（選填）</span></div>'
+        + '<input type="text" maxlength="200" value="' + esc(b.follow) + '" oninput="bkSet(\'' + no + '\',\'follow\',this.value)">'
+        + '<div class="bk-row" style="border-top:none"><span class="lb">處理日期</span><input type="date" style="width:auto;margin:0" value="' + esc(b.doneDate) + '" onchange="bkSet(\'' + no + '\',\'doneDate\',this.value)"></div>'
+        + '<div class="bk-row"><span class="lb">處理後狀態</span>' + bkSeg(b.no, 'after', m.after, b.after) + '</div></div>';
+    }
+    h += '<div class="bk-more"><input type="text" maxlength="200" placeholder="備註（選填）" value="' + esc(b.note) + '" oninput="bkSet(\'' + no + '\',\'note\',this.value)"></div>';
+    return h + '</div>';
+  }).join('');
+}
+async function submitBooks() {
+  if (!state.bkDept) { toast('請選擇部門', true); return; }
+  if (!state.bkClass) { toast('請選擇放置班級／位置', true); return; }
+  if (!state.bk.length) { toast('請至少從財產清冊選一本書', true); return; }
+  for (var i = 0; i < state.bk.length; i++) {
+    var b = state.bk[i];
+    if (!b.cat) { toast('請選擇分類：' + b.name, true); return; }
+    if (bkAbnormal(b) && !b.problem.trim()) { toast('有異常或非留存，請填問題描述：' + b.name, true); return; }
+  }
+  busy(true);
+  try {
+    var res = await api({
+      action: 'bookCheck', op: 'submit', dept: state.bkDept, cls: state.bkClass,
+      date: fromInputDate(document.getElementById('bk-date').value),
+      books: state.bk.map(function (b) { var o = JSON.parse(JSON.stringify(b)); o.doneDate = b.doneDate ? fromInputDate(b.doneDate) : ''; return o; }),
+      photo: state.photos.bk || ''
+    });
+    busy(false);
+    if (!res.ok) { toast(res.error === 'UNKNOWN_ACTION' ? '後端尚未更新（BookCheck.gs），請先部署新版本' : (res.message || '送出失敗'), true); return; }
+    toast('✅ ' + res.cls + ' 圖書檢修已記錄 ' + res.n + ' 本（' + esc(res.by) + '）');
+    state.bk = []; state.bkMeta = null; delete state.photos.bk;
+    var pv = document.getElementById('pv-bk'); if (pv) { pv.removeAttribute('src'); pv.style.display = 'none'; }
+    renderBkCards();
+    openBooks();
+    if (document.getElementById('books-recent').style.display === 'block') loadRecent('books');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+/* 圖書管理總表匯出（比照紙本欄位） */
+var BOOK_XP_COLS = ['序號', '圖書編號', '書名', '分類編號', '分類名稱', '出版社／作者', '購入／登錄日期', '數量', '放置班級／位置', '檢查日期', '動作',
+  '外觀完整', '清潔狀況', '霉斑／異味', '尖銳邊角／零件脫落', '適齡與內容', '檢查結果', '問題描述／異常情形', '立即處置',
+  '後續處理（清潔／維修／汰換）', '處理日期', '處理後狀態', '檢查／登錄人', '主管確認', '備註'];
+function bookSheet(headers, rows, dept) {
+  var n = BOOK_XP_COLS.length, aoa = [], merges = [];
+  var blank = function () { var a = []; for (var i = 0; i < n; i++) a.push(''); return a; };
+  var depts = {};
+  var iDept = headers.indexOf('部門');
+  rows.forEach(function (r) { if (iDept >= 0) depts[r[iDept]] = 1; });
+  var dk = Object.keys(depts);
+  var org = dept ? cleanOrgTitle(dept) : (dk.length === 1 ? cleanOrgTitle(dk[0]) : '星安教育集團');
+  var r0 = blank(); r0[0] = org + '｜圖書管理總表'; aoa.push(r0); merges.push({ s: { r: 0, c: 0 }, e: { r: 0, c: n - 1 } });
+  aoa.push(BOOK_XP_COLS.slice());
+  rows.forEach(function (r, k) {
+    aoa.push(BOOK_XP_COLS.map(function (c, ci) {
+      if (ci === 0) return String(k + 1);
+      var i = headers.indexOf(c);
+      return i === -1 ? '' : String(r[i] == null ? '' : r[i]).replace(/^'/, '');
+    }));
+  });
+  var tableEnd = aoa.length - 1;
+  ['分類代碼：01 語言學習、02 認知發展、03 社會互動、04 心理成長、05 感官動作、06 美感經驗、07 生活體驗',
+    '管理提醒：建議每季檢查 1 次；如發現霉斑、異味、尖銳邊角或零件脫落，應立即停止使用並記錄處理。此頻率為中心內部管理建議，實際訪視要求以新竹市當年度公告為準。'
+  ].forEach(function (t) { var r = blank(); r[0] = t; aoa.push(r); merges.push({ s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: n - 1 } }); });
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = merges;
+  var widths = { '序號': 5, '書名': 18, '出版社／作者': 12, '問題描述／異常情形': 18, '後續處理（清潔／維修／汰換）': 16, '立即處置': 10, '備註': 12, '放置班級／位置': 10, '購入／登錄日期': 11, '檢查日期': 11, '處理日期': 11, '分類名稱': 9 };
+  ws['!cols'] = BOOK_XP_COLS.map(function (c) { return { wch: widths[c] || 8 }; });
+  var rowsH = [{ hpt: 26 }, { hpt: 44 }];
+  for (var rr = 2; rr <= tableEnd; rr++) rowsH.push({ hpt: 22 });
+  rowsH.push({ hpt: 22 }, { hpt: 34 });
+  ws['!rows'] = rowsH;
+  var thin = { style: 'thin', color: { rgb: '555555' } }, box = { top: thin, bottom: thin, left: thin, right: thin };
+  for (var R = 0; R < aoa.length; R++) for (var C = 0; C < n; C++) {
+    var ref = XLSX.utils.encode_cell({ r: R, c: C });
+    if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+    var st = { font: { name: 'PMingLiU', sz: 10 }, alignment: { vertical: 'center', horizontal: 'center', wrapText: true } };
+    if (R === 0) st.font = { name: 'PMingLiU', sz: 15, bold: true };
+    else if (R <= tableEnd) {
+      st.border = box;
+      if (R === 1) { st.font = { name: 'PMingLiU', sz: 10, bold: true }; st.fill = { patternType: 'solid', fgColor: { rgb: 'F7F3EA' } }; }
+      else if (/異常|破損|淘汰/.test(String(ws[ref].v))) st.font = { name: 'PMingLiU', sz: 10, bold: true, color: { rgb: 'B84A2F' } };
+    } else st.alignment = { vertical: 'center', horizontal: 'left', wrapText: true };
+    ws[ref].s = st;
+  }
+  return ws;
+}
+
 async function openRotation() {
   if (!state.rotDept) state.rotDept = defaultDept();
   if (!document.getElementById('rot-date').value) document.getElementById('rot-date').value = toInputDate('');
@@ -3894,7 +4144,8 @@ async function loadFirstAidStatus() {
 var RECENT_BOX = {
   fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
   cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
-  infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent'
+  infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent',
+  books: 'books-recent'
 };
 state.recent = {};
 state.edit = null;
@@ -3903,7 +4154,9 @@ async function loadRecent(form) {
   busy(true);
   try {
     var n = form === 'fridge' ? 20 : 10;
-    var res = await api({ action: 'records', op: 'list', form: form, n: n });
+    var res = form === 'books' ? await api({ action: 'bookCheck', op: 'recent', n: 20 }) // v4.8：圖書檢修暫不支援修改
+      : await api({ action: 'records', op: 'list', form: form, n: n });
+    if (form === 'books' && !res.ok && res.error === 'UNKNOWN_ACTION') { busy(false); toast('後端尚未更新（BookCheck.gs），請先部署新版本', true); return; }
     if (!res.ok && res.error === 'UNKNOWN_ACTION') { // 後端尚未部署 Edit.gs：退回唯讀
       res = form === 'rotation' ? await api({ action: 'toyRotation', op: 'recent', n: 10 })
         : form === 'firstaid' ? await api({ action: 'firstAid', op: 'recent', n: 10 })
