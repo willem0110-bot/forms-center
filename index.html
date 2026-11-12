@@ -1430,6 +1430,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.10：教玩具輪替可從清冊挑「自製教具」類（財產清冊新類別，編號 S 開頭，後端 Assets.gs）
  * v4.9：所有匯出依紀錄日期由新到舊（清潔每日表維持 1～31 日曆排列，月份與每週表新→舊）
  * v4.8：教玩具輪替頁加「圖書更換檢修」分頁（後端 BookCheck.gs）、匯出圖書管理總表；清潔匯出同日多筆以最後送出為準、欄位與目前項目同步、註 3 依系統濃度選項
  * v4.7：消毒水濃度可複選
@@ -3748,7 +3749,7 @@ async function openRotation() {
     try {
       var res = await api({ action: 'assetList' });
       state.rotAssets = res.ok ? (res.assets || []).filter(function (a) {
-        return a.cat === '教玩具' && String(a.hidden).trim() !== '是' && !/報廢|遺失/.test(a.status || '');
+        return (a.cat === '教玩具' || a.cat === '自製教具') && String(a.hidden).trim() !== '是' && !/報廢|遺失/.test(a.status || ''); // v4.10：自製教具也可從清冊挑
       }) : [];
     } catch (e) { state.rotAssets = []; }
   }
