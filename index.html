@@ -1430,6 +1430,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.9：所有匯出依紀錄日期由新到舊（清潔每日表維持 1～31 日曆排列，月份與每週表新→舊）
  * v4.8：教玩具輪替頁加「圖書更換檢修」分頁（後端 BookCheck.gs）、匯出圖書管理總表；清潔匯出同日多筆以最後送出為準、欄位與目前項目同步、註 3 依系統濃度選項
  * v4.7：消毒水濃度可複選
  * v4.6：清潔項目管理：新增可「選擇班級」多選；園長／主任可直接下拉改頻率、歸屬（共用／班級），區域名稱可改（後端 CleanEdit.gs）
@@ -1704,7 +1705,7 @@ async function exportFridge() {
     if (!res.ok) { toast(res.message || '匯出失敗', true); return; }
     if (!res.rows.length) { toast('該月份沒有符合的紀錄', true); return; }
     var fv0 = fridgeView(res.headers, res.rows);
-    var fv = xpDropCols(fv0.headers, fv0.rows);
+    var fv = xpDropCols(fv0.headers, xpSortDesc(fv0.headers, fv0.rows));
     var aoa = [fv.headers].concat(fv.rows);
     var ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = fv.headers.map(function (h, i) {
@@ -1769,6 +1770,21 @@ function xpSheet(headers, rows) {
   });
   return ws;
 }
+/* v4.9：匯出一律依紀錄日期由新到舊（取第一個表頭含「日期／月份」的欄；同日以較晚送出的在前） */
+function xpDateKey(v) {
+  var m = String(v == null ? '' : v).replace(/^'/, '').match(/(\d{4})\D+(\d{1,2})(?:\D+(\d{1,2}))?/);
+  return m ? (+m[1]) * 10000 + (+m[2]) * 100 + (m[3] ? +m[3] : 0) : -1;
+}
+function xpSortDesc(headers, rows, col) {
+  var c = col != null ? col : -1;
+  if (c === -1) for (var i = 0; i < headers.length; i++) { if (/日期|月份/.test(String(headers[i]))) { c = i; break; } }
+  if (c === -1) return rows.slice().reverse();
+  var ts = -1;
+  headers.forEach(function (h, i) { if (/建立時間/.test(String(h))) ts = i; });
+  return rows.map(function (r, i) { return { r: r, i: i, k: xpDateKey(r[c]), t: ts === -1 ? '' : String(r[ts] || '') }; })
+    .sort(function (a, b) { return b.k - a.k || (b.t > a.t ? 1 : b.t < a.t ? -1 : 0) || b.i - a.i; })
+    .map(function (x) { return x.r; });
+}
 /* v4.4：匯出不含建立時間 */
 function xpDropCols(headers, rows) {
   var keep = [];
@@ -1830,7 +1846,7 @@ function cleanMatrixSheets(headers, rows) {
   };
   order.sort(function (a, b) {
     var ga = groups[a], gb = groups[b];
-    return (ga.y * 100 + ga.mo) - (gb.y * 100 + gb.mo) || dIdx(ga) - dIdx(gb);
+    return (gb.y * 100 + gb.mo) - (ga.y * 100 + ga.mo) || dIdx(ga) - dIdx(gb); // v4.9：月份新→舊
   });
   var multiMonth = {};
   order.forEach(function (k) { var g = groups[k]; multiMonth[g.y * 100 + g.mo] = 1; });
@@ -1884,7 +1900,7 @@ function cleanMatrixSheets(headers, rows) {
     });
     aoa.push(r2, r3, r4);
     var dayList = [];
-    if (weekly) dayList = Object.keys(days).map(Number).sort(function (a, b) { return a - b; });
+    if (weekly) dayList = Object.keys(days).map(Number).sort(function (a, b) { return b - a; }); // v4.9：每週表新→舊
     else { var last = new Date(Date.UTC(g.y, g.mo, 0)).getUTCDate(); for (var d = 1; d <= last; d++) dayList.push(d); }
     dayList.forEach(function (d) {
       var row = blank(), day = days[d];
@@ -1958,6 +1974,7 @@ async function exportForms(forms, key) {
       var h = sh.headers || [], rows = sh.rows || [];
       if (sh.skipped) { summary.push([xpTitle(sh.form), sh.skipped]); return; }
       if (sh.form === 'fridge' && h.length) { var fv = fridgeView(h, rows); h = fv.headers; rows = fv.rows; }
+      if (sh.form !== 'cleaning') rows = xpSortDesc(h, rows); // v4.9：新→舊
       summary.push([xpTitle(sh.form), rows.length]);
       if (!rows.length) return;
       total += rows.length;
@@ -1996,7 +2013,7 @@ async function exportAssets() {
     var cols = [['no', '財產編號'], ['cat', '類別'], ['name', '名稱'], ['brand', '廠牌／廠商'], ['qty', '數量'], ['unit', '單價'], ['total', '總價'],
       ['date', '購置日期'], ['life', '使用年限'], ['keeper', '放置處／保管人'], ['status', '狀態'], ['note', '備註'], ['hidden', '隱藏'], ['photo', '照片']];
     if (list.some(function (a) { return a.dept; })) cols.splice(2, 0, ['dept', '部門']);
-    var rows = list.map(function (a) {
+    var rows = list.slice().sort(function (a, b) { return xpDateKey(b.date) - xpDateKey(a.date); }).map(function (a) { // v4.9：購置日期新→舊
       return cols.map(function (c) {
         var v = a[c[0]] == null ? '' : String(a[c[0]]);
         if (c[0] === 'photo' && /^[A-Za-z0-9_-]{20,}$/.test(v)) v = 'https://drive.google.com/file/d/' + v + '/view';
