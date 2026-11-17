@@ -375,6 +375,13 @@ body.manage-mode .manage-box{display:block}
 .bk-more{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
 .bk-more textarea,.bk-more input[type=text],.bk-more input[type=date]{width:100%;margin-top:4px;font-size:13.5px}
 .bk-more .chips{margin-top:4px}
+.imp-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.imp-table th,.imp-table td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+.imp-table th{color:var(--ink-soft);font-weight:500;white-space:nowrap}
+.imp-table tr.off td{color:var(--idle);text-decoration:line-through}
+.imp-table .dup{color:var(--warn);font-size:11.5px;display:block}
+.imp-table .no{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.imp-wrap{overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--radius-tile);padding:0 8px;margin-top:10px}
 .rot-by{font-size:13px;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:14px}
 .rot-by b{color:var(--ink)}
 .card.static{cursor:default}
@@ -924,6 +931,7 @@ body.manage-mode .manage-box{display:block}
   <div class="tabbar">
     <button id="asset-tab-add" class="active" onclick="switchAssetTab('add')">＋ 新增財產</button>
     <button id="asset-tab-list" onclick="switchAssetTab('list')">📖 瀏覽清冊</button>
+    <button id="asset-tab-import" onclick="switchAssetTab('import')">📥 批次匯入</button>
   </div>
 
   <!-- 新增財產／編輯 -->
@@ -993,6 +1001,24 @@ body.manage-mode .manage-box{display:block}
     </div>
     <button class="submit-btn" id="as-submit-btn" onclick="submitAsset()">登記財產</button>
     <button class="secondary-btn danger-btn" id="as-delete-btn" style="display:none" onclick="deleteAsset()">🗑 刪除此筆財產</button>
+  </div>
+
+  <!-- v4.11：批次匯入（Excel；後端 AssetImport.gs 自動編號） -->
+  <div class="panel" id="asset-import-panel" style="display:none">
+    <div class="field"><label>匯入類別</label><div class="chips" id="imp-kind-chips"></div></div>
+    <div class="field" id="imp-dept-field" style="display:none">
+      <label>部門<span class="hint">教玩具分部門編號：托嬰部 T、幼兒部 K</span></label>
+      <div class="chips" id="imp-dept-chips"></div>
+    </div>
+    <div class="asset-summary" id="imp-next">請先選擇匯入類別</div>
+    <button type="button" class="secondary-btn" style="margin-top:0" onclick="downloadImportTemplate()">⬇️ 下載 Excel 範本</button>
+    <div class="field" style="margin-top:14px">
+      <label>上傳填好的 Excel<span class="hint">財產編號不用填，匯入時自動編號</span></label>
+      <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="readImportFile(this)">
+      <button type="button" class="dropzone" onclick="document.getElementById('imp-file').click()">📄 選擇 Excel 檔</button>
+    </div>
+    <div id="imp-preview"></div>
+    <button class="submit-btn" id="imp-submit" style="display:none" onclick="commitImport()">確認匯入</button>
   </div>
 
   <!-- 瀏覽清冊 -->
@@ -1430,6 +1456,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.11：財產清冊批次匯入（範本下載／Excel 上傳／預覽／自動編號：教玩具 托嬰部 T、幼兒部 K；圖書 B；後端 AssetImport.gs）
  * v4.10：教玩具輪替可從清冊挑「自製教具」類（財產清冊新類別，編號 S 開頭，後端 Assets.gs）
  * v4.9：所有匯出依紀錄日期由新到舊（清潔每日表維持 1～31 日曆排列，月份與每週表新→舊）
  * v4.8：教玩具輪替頁加「圖書更換檢修」分頁（後端 BookCheck.gs）、匯出圖書管理總表；清潔匯出同日多筆以最後送出為準、欄位與目前項目同步、註 3 依系統濃度選項
@@ -2710,9 +2737,190 @@ async function deleteAsset() {
 function switchAssetTab(tab) {
   document.getElementById('asset-tab-add').classList.toggle('active', tab === 'add');
   document.getElementById('asset-tab-list').classList.toggle('active', tab === 'list');
+  document.getElementById('asset-tab-import').classList.toggle('active', tab === 'import');
   document.getElementById('asset-add-panel').style.display = tab === 'add' ? 'block' : 'none';
   document.getElementById('asset-list-panel').style.display = tab === 'list' ? 'block' : 'none';
+  document.getElementById('asset-import-panel').style.display = tab === 'import' ? 'block' : 'none';
   if (tab === 'list' && state.assets === null) fetchAssets(false);
+  if (tab === 'import') renderImport();
+}
+
+/* ============================================================
+ * v4.11：財產清冊批次匯入（範本下載／Excel 上傳／預覽／自動編號）
+ *   後端 AssetImport.gs：action=assetImport，op=peek／commit
+ *   編號：教玩具 托嬰部 T、幼兒部 K；圖書 B（兩部門共用）
+ * ============================================================ */
+state.imp = { kind: '', dept: '', rows: [], next: '' };
+var IMP_COLS = {
+  '教玩具': [['name', '名稱', '木製串珠'], ['brand', '廠牌/廠商', '小士兵'], ['qty', '數量', '1'], ['unit', '單價', '560'], ['date', '購置日期', '2026/11/17'], ['life', '使用年限(年)', '3'], ['keeper', '放置處/保管人', '星翔班'], ['note', '備註', '']],
+  '圖書': [['name', '書名', '好餓的毛毛蟲'], ['brand', '出版社', '上誼'], ['qty', '數量', '1'], ['unit', '單價', '300'], ['date', '購置日期', '2026/11/17'], ['life', '使用年限(年)', '3'], ['keeper', '放置處/保管人', '星翔班'], ['note', '備註', '']]
+};
+var IMP_ALIAS = {
+  name: ['名稱', '品名', '書名', '教玩具名稱', '財產名稱', '教具名稱', '圖書名稱'],
+  brand: ['廠牌/廠商', '廠牌', '廠商', '出版社', '出版社/作者', '品牌', '作者', '供應商'],
+  qty: ['數量', '件數', '本數'],
+  unit: ['單價', '價格', '售價', '定價'],
+  date: ['購置日期', '購入日期', '購買日期', '登錄日期', '購入/登錄日期', '日期'],
+  life: ['使用年限', '使用年限(年)', '年限'],
+  keeper: ['放置處/保管人', '放置處', '保管人', '保管班級', '放置班級', '放置班級/位置', '位置'],
+  note: ['備註', '說明']
+};
+function impNorm(h) { return String(h == null ? '' : h).replace(/\s+/g, '').replace(/[／]/g, '/').replace(/[（]/g, '(').replace(/[）]/g, ')').replace(/\*/g, ''); }
+function impPrefix() { return state.imp.kind === '圖書' ? 'B' : (state.imp.dept === '幼兒部' ? 'K' : state.imp.dept === '托嬰部' ? 'T' : ''); }
+function renderImport() {
+  var kc = document.getElementById('imp-kind-chips');
+  kc.innerHTML = '';
+  ['教玩具', '圖書'].forEach(function (k) {
+    kc.appendChild(chipBtn(k, state.imp.kind === k, function (v) { state.imp.kind = v; state.imp.next = ''; renderImport(); impPeek(); }));
+  });
+  var df = document.getElementById('imp-dept-field');
+  df.style.display = state.imp.kind === '教玩具' ? '' : 'none';
+  var dc = document.getElementById('imp-dept-chips');
+  dc.innerHTML = '';
+  ['托嬰部', '幼兒部'].forEach(function (d) {
+    dc.appendChild(chipBtn(d, state.imp.dept === d, function (v) { state.imp.dept = v; state.imp.next = ''; renderImport(); impPeek(); }));
+  });
+  var nx = document.getElementById('imp-next');
+  if (!state.imp.kind) nx.textContent = '請先選擇匯入類別';
+  else if (!impPrefix()) nx.textContent = '教玩具請選擇托嬰部或幼兒部';
+  else nx.innerHTML = '匯入：<b>' + esc(state.imp.kind) + (state.imp.kind === '圖書' ? '（兩部門共用）' : '・' + esc(state.imp.dept)) + '</b>　編號字首 <b>' + impPrefix() + '</b>'
+    + (state.imp.next ? '，從 <b>' + esc(state.imp.next) + '</b> 開始' : '');
+  renderImpPreview();
+}
+async function impPeek() {
+  if (!impPrefix()) return;
+  try {
+    var r = await api({ action: 'assetImport', op: 'peek', kind: state.imp.kind, dept: state.imp.dept });
+    if (r.ok) { state.imp.next = r.next; renderImport(); }
+    else if (r.error === 'UNKNOWN_ACTION') toast('後端尚未更新（AssetImport.gs），請先部署新版本', true);
+  } catch (e) { }
+}
+async function downloadImportTemplate() {
+  if (!state.imp.kind) { toast('請先選擇要匯入教玩具還是圖書', true); return; }
+  if (!impPrefix()) { toast('教玩具請先選擇托嬰部或幼兒部', true); return; }
+  busy(true);
+  try {
+    await loadSheetJs();
+    busy(false);
+    var cols = IMP_COLS[state.imp.kind];
+    var head = cols.map(function (c) { return c[1] + (c[0] === 'name' ? '*' : ''); });
+    var ex = cols.map(function (c) { return c[0] === 'name' ? '範例：' + c[2] : c[2]; });
+    var ws = XLSX.utils.aoa_to_sheet([head, ex]);
+    ws['!cols'] = cols.map(function (c) { return { wch: c[0] === 'name' ? 26 : c[0] === 'note' ? 20 : 14 }; });
+    var thin = { style: 'thin', color: { rgb: 'BBBBBB' } };
+    cols.forEach(function (c, i) {
+      var a = XLSX.utils.encode_cell({ r: 0, c: i }), b = XLSX.utils.encode_cell({ r: 1, c: i });
+      ws[a].s = { font: { bold: true, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: 'B84A2F' } }, alignment: { horizontal: 'center' }, border: { top: thin, bottom: thin, left: thin, right: thin } };
+      ws[b].s = { font: { italic: true, color: { rgb: '9A928A' } } };
+    });
+    var dept = state.imp.kind === '圖書' ? '兩部門共用' : state.imp.dept;
+    var guide = XLSX.utils.aoa_to_sheet([
+      ['星安表格中心｜財產清冊批次匯入範本（' + state.imp.kind + '・' + dept + '）'], [''],
+      ['1. 在「匯入資料」分頁從第 2 列開始填，一列一筆；第 2 列的「範例：」那列可直接覆蓋或刪除（以「範例」開頭的列不會匯入）。'],
+      ['2. 只有「' + cols[0][1] + '」必填；數量留白＝1。'],
+      ['3. 財產編號不用填：上傳後系統自動編號（' + (state.imp.kind === '圖書' ? '圖書 B，例 B26001' : (state.imp.dept === '幼兒部' ? '幼兒部教玩具 K，例 K26001' : '托嬰部教玩具 T，例 T26001')) + '）。'],
+      ['4. 購置日期可填 2026/11/17、2026-11-17 或民國 115/11/17。'],
+      ['5. 填好後回表格中心「財產清冊 → 📥 批次匯入」上傳，確認預覽無誤再按「確認匯入」。']
+    ]);
+    guide['!cols'] = [{ wch: 100 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '匯入資料');
+    XLSX.utils.book_append_sheet(wb, guide, '填寫說明');
+    XLSX.writeFile(wb, '財產匯入範本_' + state.imp.kind + '_' + dept + '.xlsx');
+  } catch (e) { busy(false); toast('範本產生失敗，請再試一次', true); }
+}
+function impDate(v) {
+  var s = String(v == null ? '' : v).trim();
+  if (/^\d{5}(\.\d+)?$/.test(s)) { // Excel 日期序號
+    var d = new Date(Date.UTC(1899, 11, 30) + Math.floor(+s) * 86400000);
+    return d.getUTCFullYear() + '/' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '/' + ('0' + d.getUTCDate()).slice(-2);
+  }
+  var m = s.match(/^(\d{2,4})\D+(\d{1,2})\D+(\d{1,2})/);
+  if (!m) return s;
+  var y = +m[1]; if (y < 1911) y += 1911;
+  return y + '/' + ('0' + m[2]).slice(-2) + '/' + ('0' + m[3]).slice(-2);
+}
+async function readImportFile(input) {
+  var f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  if (!state.imp.kind || !impPrefix()) { toast('請先選擇匯入類別' + (state.imp.kind === '教玩具' ? '與部門' : ''), true); return; }
+  busy(true);
+  try {
+    await loadSheetJs();
+    var buf = await f.arrayBuffer();
+    var wb = XLSX.read(buf, { type: 'array' });
+    var name = wb.SheetNames.indexOf('匯入資料') !== -1 ? '匯入資料' : wb.SheetNames[0];
+    var aoa = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false, defval: '', dateNF: 'yyyy/mm/dd' });
+    // 找表頭列：前 10 列中第一個含「名稱」類欄位的列
+    var hi = -1, map = {};
+    for (var r = 0; r < Math.min(aoa.length, 10) && hi === -1; r++) {
+      var m2 = {};
+      aoa[r].forEach(function (h, ci) {
+        var n = impNorm(h);
+        Object.keys(IMP_ALIAS).forEach(function (k) {
+          if (m2[k] != null) return;
+          if (IMP_ALIAS[k].some(function (a) { return impNorm(a) === n || (k === 'life' && n.indexOf('年限') !== -1); })) m2[k] = ci;
+        });
+      });
+      if (m2.name != null) { hi = r; map = m2; }
+    }
+    if (hi === -1) { busy(false); toast('找不到「名稱／書名」欄，請用範本填寫', true); return; }
+    // 清冊現有名稱（同類別）用來標示重複
+    var exist = {};
+    try {
+      var al = state.assets || ((await api({ action: 'assetList' })).assets || []);
+      al.forEach(function (a) { if (a.cat === state.imp.kind) exist[impNorm(a.name)] = a.no; });
+    } catch (e2) { }
+    var rows = [];
+    for (var i = hi + 1; i < aoa.length; i++) {
+      var get = function (k) { return map[k] == null ? '' : String(aoa[i][map[k]] == null ? '' : aoa[i][map[k]]).trim(); };
+      var nm = get('name');
+      if (!nm || /^範例/.test(nm)) continue;
+      var dupNo = exist[impNorm(nm)] || '';
+      rows.push({ on: !dupNo, dup: dupNo, name: nm, brand: get('brand'), qty: get('qty'), unit: get('unit'), date: impDate(get('date')), life: get('life'), keeper: get('keeper'), note: get('note') });
+    }
+    busy(false);
+    state.imp.rows = rows;
+    renderImpPreview();
+    if (!rows.length) toast('檔案裡沒有可匯入的資料列', true);
+    else toast('讀到 ' + rows.length + ' 筆，請確認預覽' + (rows.some(function (x) { return x.dup; }) ? '（清冊已有同名的先取消勾選）' : ''));
+  } catch (e) { busy(false); toast('讀檔失敗：請確認是 Excel 檔（.xlsx）', true); }
+}
+function impToggle(i) { state.imp.rows[i].on = !state.imp.rows[i].on; renderImpPreview(); }
+function renderImpPreview() {
+  var wrap = document.getElementById('imp-preview'), btn = document.getElementById('imp-submit');
+  if (!wrap) return;
+  var rows = state.imp.rows;
+  if (!rows.length) { wrap.innerHTML = ''; btn.style.display = 'none'; return; }
+  var m = (state.imp.next || '').match(/^([A-Z]+)(\d{2})(\d{3})$/), seq = m ? +m[3] : 0, k = 0;
+  var cols = IMP_COLS[state.imp.kind] || IMP_COLS['教玩具'];
+  var n = rows.filter(function (x) { return x.on; }).length;
+  wrap.innerHTML = '<div class="asset-summary" style="margin-top:12px">預覽：共 ' + rows.length + ' 筆，勾選匯入 <b>' + n + '</b> 筆</div><div class="imp-wrap"><table class="imp-table"><thead><tr><th>匯入</th><th>預計編號</th>'
+    + cols.map(function (c) { return '<th>' + esc(c[1]) + '</th>'; }).join('') + '</tr></thead><tbody>'
+    + rows.map(function (x, i) {
+      var no = x.on && m ? m[1] + m[2] + ('00' + (seq + k++)).slice(-3) : (x.on ? '自動編號' : '—');
+      return '<tr class="' + (x.on ? '' : 'off') + '"><td><input type="checkbox" ' + (x.on ? 'checked' : '') + ' onchange="impToggle(' + i + ')"></td><td class="no">' + esc(no) + '</td>'
+        + cols.map(function (c) { return '<td>' + esc(x[c[0]] || '') + (c[0] === 'name' && x.dup ? '<span class="dup">清冊已有同名（' + esc(x.dup) + '）</span>' : '') + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</tbody></table></div>';
+  btn.style.display = n ? '' : 'none';
+  btn.textContent = '確認匯入 ' + n + ' 筆';
+}
+async function commitImport() {
+  var rows = state.imp.rows.filter(function (x) { return x.on; });
+  if (!rows.length) { toast('沒有勾選要匯入的資料', true); return; }
+  if (!confirm('確定匯入 ' + rows.length + ' 筆' + state.imp.kind + (state.imp.kind === '圖書' ? '' : '（' + state.imp.dept + '）') + '？\n財產編號會自動產生。')) return;
+  busy(true);
+  try {
+    var res = await api({ action: 'assetImport', op: 'commit', kind: state.imp.kind, dept: state.imp.dept,
+      rows: rows.map(function (x) { return { name: x.name, brand: x.brand, qty: x.qty, unit: x.unit, date: x.date, life: x.life, keeper: x.keeper, note: x.note }; }) });
+    busy(false);
+    if (!res.ok) { toast(res.error === 'UNKNOWN_ACTION' ? '後端尚未更新（AssetImport.gs），請先部署新版本' : (res.message || '匯入失敗'), true); return; }
+    toast('✅ 已匯入 ' + res.n + ' 筆（' + res.first + (res.n > 1 ? '～' + res.last : '') + '）');
+    state.imp.rows = []; state.imp.next = '';
+    state.assets = null;
+    switchAssetTab('list');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
 }
 
 async function submitAsset() {
