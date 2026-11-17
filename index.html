@@ -943,8 +943,12 @@ body.manage-mode .manage-box{display:block}
       <label>類別</label>
       <div class="chips" id="asset-cat-chips"></div>
     </div>
+    <div class="field" id="asset-dept-field" style="display:none">
+      <label>部門<span class="hint">教玩具分部門編號：托嬰部 T、幼兒部 K</span></label>
+      <div class="chips" id="asset-dept-chips"></div>
+    </div>
     <div class="field">
-      <label>財產編號<span class="hint">留白＝自動編號（如 W25028）</span></label>
+      <label>財產編號<span class="hint" id="as-no-hint">留白＝自動編號（如 W25028）</span></label>
       <input type="text" id="as-no" placeholder="留白由系統自動編號">
     </div>
     <div class="field">
@@ -1456,6 +1460,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.12：單筆新增／編輯教玩具可選部門（托嬰部 T、幼兒部 K；後端 Assets.gs v2.4），清冊顯示部門
  * v4.11：財產清冊批次匯入（範本下載／Excel 上傳／預覽／自動編號：教玩具 托嬰部 T、幼兒部 K；圖書 B；後端 AssetImport.gs）
  * v4.10：教玩具輪替可從清冊挑「自製教具」類（財產清冊新類別，編號 S 開頭，後端 Assets.gs）
  * v4.9：所有匯出依紀錄日期由新到舊（清潔每日表維持 1～31 日曆排列，月份與每週表新→舊）
@@ -2593,6 +2598,7 @@ function initAssetDropzone() {
   window.addEventListener('drop', function (e) { e.preventDefault(); });
 }
 
+var ASSET_NO_EX = { '設施設備': 'W26001', '圖書': 'B26001', '自製教具': 'S26001' };
 function renderAssetForm() {
   var wrap = document.getElementById('asset-cat-chips');
   wrap.innerHTML = '';
@@ -2602,6 +2608,16 @@ function renderAssetForm() {
       renderAssetForm();
     }));
   });
+  // v4.12：教玩具分部門（托嬰部 T、幼兒部 K）
+  var toy = state.assetCat === '教玩具';
+  document.getElementById('asset-dept-field').style.display = toy ? '' : 'none';
+  var dc = document.getElementById('asset-dept-chips');
+  dc.innerHTML = '';
+  ['托嬰部', '幼兒部'].forEach(function (d) {
+    dc.appendChild(chipBtn(d, state.assetDept === d, function (v) { state.assetDept = v; renderAssetForm(); }));
+  });
+  var ex = toy ? (state.assetDept === '幼兒部' ? 'K26001' : 'T26001') : (ASSET_NO_EX[state.assetCat] || 'W26001');
+  document.getElementById('as-no-hint').textContent = '留白＝自動編號（如 ' + ex + '）';
 }
 
 function onAssetPhoto(input) {
@@ -2665,6 +2681,7 @@ function startEdit(no) {
   if (!a) return;
   state.editOrig = no;
   state.assetCat = a.cat;
+  state.assetDept = a.dept && a.dept !== '兩部門' ? a.dept : (a.cat === '教玩具' && /^T/.test(a.no) ? '托嬰部' : a.cat === '教玩具' && /^K/.test(a.no) ? '幼兒部' : '');
   state.assetPhoto = '';
   state.removePhoto = false;
   state.editPhotoId = String(a.photo || '').trim();
@@ -2925,6 +2942,7 @@ async function commitImport() {
 
 async function submitAsset() {
   if (!state.assetCat) { toast('請選擇類別', true); return; }
+  if (state.assetCat === '教玩具' && !state.assetDept) { toast('教玩具請選擇托嬰部或幼兒部', true); return; }
   var name = document.getElementById('as-name').value.trim();
   if (!name) { toast('請填寫財產名稱', true); return; }
   var payload = {
@@ -2941,6 +2959,7 @@ async function submitAsset() {
     note: document.getElementById('as-note').value.trim(),
     photo: state.assetPhoto
   };
+  if (state.assetCat === '教玩具') payload.dept = state.assetDept; // v4.12
   if (state.editOrig) {
     payload.origNo = state.editOrig;
     payload.status = document.getElementById('as-status').value;
@@ -3046,7 +3065,7 @@ function renderAssetList() {
   list.forEach(function (a) {
     var row = document.createElement('div');
     row.className = 'asset-row';
-    var meta = [a.cat, a.qty + ' 件'];
+    var meta = [a.cat + (a.dept && a.dept !== '兩部門' ? '（' + a.dept + '）' : ''), a.qty + ' 件'];
     if (a.total !== '') meta.push('NT$ ' + a.total);
     if (a.date) meta.push(a.date);
     if (a.brand) meta.push(a.brand);
