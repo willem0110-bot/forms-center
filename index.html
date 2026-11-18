@@ -949,7 +949,7 @@ body.manage-mode .manage-box{display:block}
       <div class="chips" id="asset-cat-chips"></div>
     </div>
     <div class="field" id="asset-dept-field" style="display:none">
-      <label>部門<span class="hint">教玩具分部門編號：托嬰部 T、幼兒部 K</span></label>
+      <label>部門<span class="hint" id="asset-dept-hint">教玩具分部門編號：托嬰部 T、幼兒部 K</span></label>
       <div class="chips" id="asset-dept-chips"></div>
     </div>
     <div class="field">
@@ -1037,7 +1037,11 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <div class="chips" id="asset-filter-chips"></div>
     </div>
-    <button type="button" class="secondary-btn" style="margin:0 0 10px" onclick="exportAssets()">⬇️ 匯出財產清冊 Excel</button>
+    <div class="field-row" style="align-items:flex-end;margin-bottom:10px">
+      <div class="field" style="margin:0"><label>匯出部門<span class="hint">每個類別一個分頁</span></label>
+        <select id="as-xp-dept"><option value="">全部</option><option value="托嬰部">托嬰部</option><option value="幼兒部">幼兒部</option></select></div>
+      <button type="button" class="secondary-btn" style="margin:0" onclick="exportAssets()">⬇️ 匯出財產清冊 Excel</button>
+    </div>
     <div class="asset-summary" id="as-summary">載入中…</div>
     <div id="as-rows"></div>
     <button class="secondary-btn" onclick="fetchAssets(true)">🔄 重新整理</button>
@@ -1464,6 +1468,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.15：財產清冊匯出每個類別一個分頁＋總覽，可選匯出托嬰部／幼兒部；圖書以外新增／編輯可選部門
  * v4.14：編輯時移除已存照片先確認；儲存後原檔移到雲端硬碟垃圾桶（後端 Assets.gs v2.6）
  * v4.13：財產照片可多張（最多 6 張，一次多選／拖放、編輯時個別移除；清冊縮圖標張數、燈箱點照片換下一張；後端 Assets.gs v2.5）
  * v4.12：單筆新增／編輯教玩具可選部門（托嬰部 T、幼兒部 K；後端 Assets.gs v2.4），清冊顯示部門
@@ -2041,29 +2046,53 @@ async function exportForms(forms, key) {
   }
 }
 /* 財產清冊：直接用 assetList 的資料在前端匯出（含已隱藏，另有「隱藏」欄） */
+/* v4.15：財產所屬部門（有填用填的；圖書＝兩部門；舊資料：T→托嬰部、K→幼兒部、其餘沒填的歸托嬰部〔初始清冊來自托嬰中心〕） */
+function assetDeptOf(a) {
+  if (a.cat === '圖書') return '兩部門';
+  if (a.dept && a.dept !== '兩部門') return a.dept;
+  if (/^K/i.test(a.no || '')) return '幼兒部';
+  return '托嬰部';
+}
 async function exportAssets() {
+  var dept = (document.getElementById('as-xp-dept') || {}).value || '';
   busy(true);
   try {
     await loadSheetJs();
     var list = state.assets;
     if (!list) { var r = await api({ action: 'assetList' }); if (!r.ok) throw new Error('載入清冊失敗'); list = r.assets || []; }
     busy(false);
-    if (!list.length) { toast('清冊目前沒有資料', true); return; }
-    var cols = [['no', '財產編號'], ['cat', '類別'], ['name', '名稱'], ['brand', '廠牌／廠商'], ['qty', '數量'], ['unit', '單價'], ['total', '總價'],
+    if (dept) list = list.filter(function (a) { var d = assetDeptOf(a); return d === dept || d === '兩部門'; }); // v4.15
+    if (!list.length) { toast((dept || '清冊') + '目前沒有財產資料', true); return; }
+    var cols = [['no', '財產編號'], ['name', '名稱'], ['dept', '部門'], ['brand', '廠牌／廠商'], ['qty', '數量'], ['unit', '單價'], ['total', '總價'],
       ['date', '購置日期'], ['life', '使用年限'], ['keeper', '放置處／保管人'], ['status', '狀態'], ['note', '備註'], ['hidden', '隱藏'], ['photo', '照片']];
-    if (list.some(function (a) { return a.dept; })) cols.splice(2, 0, ['dept', '部門']);
-    var rows = list.slice().sort(function (a, b) { return xpDateKey(b.date) - xpDateKey(a.date); }).map(function (a) { // v4.9：購置日期新→舊
+    var toRow = function (a) {
       return cols.map(function (c) {
-        var v = a[c[0]] == null ? '' : String(a[c[0]]);
+        var v = c[0] === 'dept' ? assetDeptOf(a) : (a[c[0]] == null ? '' : String(a[c[0]]));
         if (c[0] === 'photo') v = splitPhotoIds(v).map(function (id) { return /^[A-Za-z0-9_-]{20,}$/.test(id) ? 'https://drive.google.com/file/d/' + id + '/view' : id; }).join('\n'); // v4.13：多張照片各一行連結
         return v;
       });
+    };
+    // v4.15：每個類別一個分頁（依清冊類別順序），第一頁總覽
+    var cats = (state.assetCats || []).slice();
+    list.forEach(function (a) { if (cats.indexOf(a.cat) === -1) cats.push(a.cat); });
+    var wb = XLSX.utils.book_new(), used = {}, summary = [], total = 0, money = 0;
+    cats.forEach(function (cat) {
+      var part = list.filter(function (a) { return a.cat === cat; })
+        .sort(function (a, b) { return xpDateKey(b.date) - xpDateKey(a.date); }); // v4.9：購置日期新→舊
+      if (!part.length) return;
+      var sum = part.reduce(function (s2, a) { var n = Number(String(a.total || '').replace(/,/g, '')); return s2 + (isFinite(n) ? n : 0); }, 0);
+      sum = Math.round(sum * 100) / 100;
+      summary.push([cat, part.length, sum]);
+      total += part.length; money += sum;
+      XLSX.utils.book_append_sheet(wb, xpSheet(cols.map(function (c) { return c[1]; }), part.map(toRow)), xpSheetName(cat || '未分類', used));
     });
-    var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, xpSheet(cols.map(function (c) { return c[1]; }), rows), '財產清冊');
-    var fname = '財產清冊_' + toInputDate('').replace(/-/g, '') + '.xlsx';
+    var ov = XLSX.utils.aoa_to_sheet([['星安財產清冊｜' + (dept || '全部部門')], ['匯出日期', toInputDate('').replace(/-/g, '/')], ['匯出人', state.user ? state.user.name : ''], [],
+      ['類別', '筆數', '總金額（NT$）']].concat(summary).concat([['合計', total, Math.round(money * 100) / 100]]).concat([[], [dept ? '說明：' + dept + '匯出含共用圖書；未填部門的舊財產，T 開頭與設施設備歸托嬰部、K 開頭歸幼兒部。' : '說明：部門欄未填的舊財產，T 開頭與設施設備歸托嬰部、K 開頭歸幼兒部。']]));
+    ov['!cols'] = [{ wch: 18 }, { wch: 10 }, { wch: 16 }];
+    wb.SheetNames.unshift('總覽'); wb.Sheets['總覽'] = ov;
+    var fname = '財產清冊_' + (dept || '全部部門') + '_' + toInputDate('').replace(/-/g, '') + '.xlsx';
     XLSX.writeFile(wb, fname);
-    toast('✅ 已匯出 ' + rows.length + ' 筆（' + fname + '）');
+    toast('✅ 已匯出 ' + total + ' 筆・' + summary.length + ' 個類別（' + fname + '）');
   } catch (e) { busy(false); toast(String(e && e.message ? e.message : '匯出失敗，請再試一次'), true); }
 }
 
@@ -2615,7 +2644,9 @@ function renderAssetForm() {
   });
   // v4.12：教玩具分部門（托嬰部 T、幼兒部 K）
   var toy = state.assetCat === '教玩具';
-  document.getElementById('asset-dept-field').style.display = toy ? '' : 'none';
+  // v4.15：圖書以外都可選部門（教玩具必選、影響編號；其他選填、供匯出分部門）
+  document.getElementById('asset-dept-field').style.display = state.assetCat && state.assetCat !== '圖書' ? '' : 'none';
+  document.getElementById('asset-dept-hint').textContent = toy ? '必選・教玩具分部門編號：托嬰部 T、幼兒部 K' : '選填・匯出財產清冊時可依部門篩選';
   var dc = document.getElementById('asset-dept-chips');
   dc.innerHTML = '';
   ['托嬰部', '幼兒部'].forEach(function (d) {
@@ -2986,7 +3017,7 @@ async function submitAsset() {
     photos: state.asPhotos.filter(function (p) { return p.b64; }).map(function (p) { return p.b64; })
   };
   if (!state.editOrig && payload.photos.length) payload.photo = payload.photos[0]; // 相容舊後端（只收一張）
-  if (state.assetCat === '教玩具') payload.dept = state.assetDept; // v4.12
+  if (state.assetCat && state.assetCat !== '圖書' && (state.assetCat === '教玩具' || state.assetDept)) payload.dept = state.assetDept; // v4.12／v4.15：圖書以外有選就送
   if (state.editOrig) {
     payload.origNo = state.editOrig;
     payload.status = document.getElementById('as-status').value;
