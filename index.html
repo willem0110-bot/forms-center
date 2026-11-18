@@ -252,10 +252,15 @@ body.manage-mode .manage-box{display:block}
 .dropzone .dz-hint{display:block;margin-top:5px;font-size:12px;color:var(--ink-soft)}
 .dropzone.dragover{border-color:var(--accent);background:var(--accent-soft);border-style:solid}
 .asset-main{flex:1;min-width:0}
-#as-photo-preview{
-  display:none;width:100%;max-height:220px;object-fit:contain;
-  border-radius:12px;border:1px solid var(--line);margin-top:10px;background:var(--bg);
-}
+.as-photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.as-photos:empty{display:none}
+.as-ph{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+.as-ph img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.as-ph .x{position:absolute;top:4px;right:4px;width:30px;height:30px;border-radius:50%;border:none;background:rgba(42,38,34,.7);color:#fff;font-size:14px;cursor:pointer}
+.as-ph .tag{position:absolute;left:4px;bottom:4px;font-size:10.5px;background:rgba(255,255,255,.88);border-radius:var(--radius-pill);padding:1px 7px;color:var(--ink-soft)}
+.thumb-wrap{position:relative;flex-shrink:0}
+.thumb-wrap .n{position:absolute;right:-4px;bottom:-4px;background:var(--accent);color:#fff;font-size:10.5px;font-weight:700;border-radius:var(--radius-pill);padding:1px 6px;border:2px solid #fff}
+#lightbox .lb-count{position:absolute;bottom:18px;left:0;right:0;text-align:center;color:#fff;font-size:13px}
 .asset-row .l1{display:flex;align-items:baseline;gap:8px}
 .asset-row .ano{font-weight:700;font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-soft)}
 .asset-row .aname{font-weight:700;font-size:15px;flex:1}
@@ -994,14 +999,13 @@ body.manage-mode .manage-box{display:block}
       <textarea id="as-note" placeholder="其他補充說明"></textarea>
     </div>
     <div class="field">
-      <label>照片<span class="hint">選填・含安全標章，會存入園長雲端硬碟</span></label>
-      <input type="file" id="as-photo" accept="image/*" style="display:none" onchange="onAssetPhoto(this)">
+      <label>照片<span class="hint">選填・最多 6 張（可一次選多張），含安全標章，會存入園長雲端硬碟</span></label>
+      <input type="file" id="as-photo" accept="image/*" multiple style="display:none" onchange="onAssetPhoto(this)">
       <div id="as-dropzone" class="dropzone" onclick="document.getElementById('as-photo').click()">
         📷 拍照／選擇照片
-        <span class="dz-hint">電腦版可直接把照片拖放到這裡</span>
+        <span class="dz-hint" id="as-photo-count">電腦版可直接把照片拖放到這裡</span>
       </div>
-      <img id="as-photo-preview" alt="財產照片預覽">
-      <button type="button" class="secondary-btn" id="as-photo-clear" style="display:none" onclick="clearAssetPhoto()">✕ 移除照片</button>
+      <div class="as-photos" id="as-photos"></div>
     </div>
     <button class="submit-btn" id="as-submit-btn" onclick="submitAsset()">登記財產</button>
     <button class="secondary-btn danger-btn" id="as-delete-btn" style="display:none" onclick="deleteAsset()">🗑 刪除此筆財產</button>
@@ -1447,7 +1451,7 @@ body.manage-mode .manage-box{display:block}
     <button class="secondary-btn" onclick="closeEdit()">取消</button>
   </div>
 </div>
-<div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" alt="財產照片"><div class="lb-close">✕</div></div>
+<div id="lightbox" onclick="closeLightbox()"><img id="lightbox-img" alt="財產照片" onclick="lightboxNext(event)"><div class="lb-close">✕</div><div class="lb-count" id="lightbox-count"></div></div>
 
 <!-- Toast & Busy -->
 <div id="toast"></div>
@@ -1460,6 +1464,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.13：財產照片可多張（最多 6 張，一次多選／拖放、編輯時個別移除；清冊縮圖標張數、燈箱點照片換下一張；後端 Assets.gs v2.5）
  * v4.12：單筆新增／編輯教玩具可選部門（托嬰部 T、幼兒部 K；後端 Assets.gs v2.4），清冊顯示部門
  * v4.11：財產清冊批次匯入（範本下載／Excel 上傳／預覽／自動編號：教玩具 托嬰部 T、幼兒部 K；圖書 B；後端 AssetImport.gs）
  * v4.10：教玩具輪替可從清冊挑「自製教具」類（財產清冊新類別，編號 S 開頭，後端 Assets.gs）
@@ -2049,7 +2054,7 @@ async function exportAssets() {
     var rows = list.slice().sort(function (a, b) { return xpDateKey(b.date) - xpDateKey(a.date); }).map(function (a) { // v4.9：購置日期新→舊
       return cols.map(function (c) {
         var v = a[c[0]] == null ? '' : String(a[c[0]]);
-        if (c[0] === 'photo' && /^[A-Za-z0-9_-]{20,}$/.test(v)) v = 'https://drive.google.com/file/d/' + v + '/view';
+        if (c[0] === 'photo') v = splitPhotoIds(v).map(function (id) { return /^[A-Za-z0-9_-]{20,}$/.test(id) ? 'https://drive.google.com/file/d/' + id + '/view' : id; }).join('\n'); // v4.13：多張照片各一行連結
         return v;
       });
     });
@@ -2590,8 +2595,7 @@ function initAssetDropzone() {
     dz.addEventListener(evt, function (e) { e.preventDefault(); e.stopPropagation(); dz.classList.remove('dragover'); });
   });
   dz.addEventListener('drop', function (e) {
-    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    handleAssetPhotoFile(f);
+    addAssetPhotoFiles(Array.prototype.slice.call((e.dataTransfer && e.dataTransfer.files) || []));
   });
   // 拖到框外時不讓瀏覽器直接開圖跳離頁面
   window.addEventListener('dragover', function (e) { e.preventDefault(); });
@@ -2620,13 +2624,39 @@ function renderAssetForm() {
   document.getElementById('as-no-hint').textContent = '留白＝自動編號（如 ' + ex + '）';
 }
 
+/* v4.13：一筆財產多張照片（最多 6 張）
+ *   state.asPhotos = [{ id:'既有雲端ID' } 或 { b64:'新照片base64', src:'dataURL' }] */
+var ASSET_MAX_PHOTOS = 6;
+state.asPhotos = [];
+function splitPhotoIds(v) { return String(v || '').split(/[,，\s]+/).map(function (x) { return x.trim(); }).filter(String); }
+function renderAssetPhotos() {
+  var wrap = document.getElementById('as-photos');
+  if (!wrap) return;
+  wrap.innerHTML = state.asPhotos.map(function (p, i) {
+    var src = p.id ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(p.id) + '&sz=w400' : p.src;
+    return '<div class="as-ph"><img src="' + src + '" alt="照片 ' + (i + 1) + '" onclick="' + (p.id ? 'openLightbox(event,\'' + esc(p.id) + '\')' : '') + '">'
+      + '<button type="button" class="x" aria-label="移除這張" onclick="removeAssetPhoto(' + i + ')">✕</button>'
+      + '<span class="tag">' + (p.id ? '已存' : '新增') + '</span></div>';
+  }).join('');
+  var n = state.asPhotos.length;
+  document.getElementById('as-photo-count').textContent = n ? '已選 ' + n + '／' + ASSET_MAX_PHOTOS + ' 張・可再加' : '電腦版可直接把照片拖放到這裡（可多張）';
+}
+function removeAssetPhoto(i) { state.asPhotos.splice(i, 1); renderAssetPhotos(); }
 function onAssetPhoto(input) {
-  handleAssetPhotoFile(input.files && input.files[0]);
+  var files = Array.prototype.slice.call((input.files) || []);
+  input.value = '';
+  addAssetPhotoFiles(files);
+}
+function addAssetPhotoFiles(files) {
+  var room = ASSET_MAX_PHOTOS - state.asPhotos.length;
+  if (room <= 0) { toast('每筆財產最多 ' + ASSET_MAX_PHOTOS + ' 張照片', true); return; }
+  if (files.length > room) toast('最多 ' + ASSET_MAX_PHOTOS + ' 張，只加入前 ' + room + ' 張', true);
+  files.slice(0, room).forEach(handleAssetPhotoFile);
 }
 
 function handleAssetPhotoFile(file) {
   if (!file) return;
-  if (String(file.type).indexOf('image/') !== 0) { toast('請拖放圖片檔案（jpg／png／heic）', true); return; }
+  if (String(file.type).indexOf('image/') !== 0) { toast('請選擇圖片檔案（jpg／png／heic）', true); return; }
   var reader = new FileReader();
   reader.onload = function (e) {
     var img = new Image();
@@ -2641,11 +2671,9 @@ function handleAssetPhotoFile(file) {
       cv.width = w; cv.height = h;
       cv.getContext('2d').drawImage(img, 0, 0, w, h);
       var dataUrl = cv.toDataURL('image/jpeg', 0.82);
-      state.assetPhoto = dataUrl.split(',')[1]; // 純 base64
-      state.removePhoto = false;
-      var pv = document.getElementById('as-photo-preview');
-      pv.src = dataUrl; pv.style.display = 'block';
-      document.getElementById('as-photo-clear').style.display = 'block';
+      if (state.asPhotos.length >= ASSET_MAX_PHOTOS) return;
+      state.asPhotos.push({ b64: dataUrl.split(',')[1], src: dataUrl }); // 純 base64
+      renderAssetPhotos();
     };
     img.src = e.target.result;
   };
@@ -2653,22 +2681,30 @@ function handleAssetPhotoFile(file) {
 }
 
 function clearAssetPhoto() {
-  if (state.editOrig && state.editPhotoId) state.removePhoto = true; // 編輯模式：移除既有照片
-  state.assetPhoto = '';
-  state.editPhotoId = '';
+  state.asPhotos = [];
   document.getElementById('as-photo').value = '';
-  var pv = document.getElementById('as-photo-preview');
-  pv.src = ''; pv.style.display = 'none';
-  document.getElementById('as-photo-clear').style.display = 'none';
+  renderAssetPhotos();
 }
 
 /* ---------- 照片燈箱 ---------- */
-function openLightbox(ev, photoId) {
+function openLightbox(ev, photoId) { // v4.13：可傳逗號分隔的多個 ID，點照片換下一張
   if (ev) ev.stopPropagation();
-  if (!photoId) return;
-  document.getElementById('lightbox-img').src =
-    'https://drive.google.com/thumbnail?id=' + photoId + '&sz=w1600';
+  var ids = splitPhotoIds(photoId);
+  if (!ids.length) return;
+  state.lb = { ids: ids, i: 0 };
+  showLightbox();
   document.getElementById('lightbox').style.display = 'flex';
+}
+function showLightbox() {
+  var lb = state.lb;
+  document.getElementById('lightbox-img').src = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(lb.ids[lb.i]) + '&sz=w1600';
+  document.getElementById('lightbox-count').textContent = lb.ids.length > 1 ? (lb.i + 1) + '／' + lb.ids.length + '　點照片看下一張' : '';
+}
+function lightboxNext(ev) {
+  if (!state.lb || state.lb.ids.length < 2) return; // 單張：照舊點一下關閉
+  ev.stopPropagation();
+  state.lb.i = (state.lb.i + 1) % state.lb.ids.length;
+  showLightbox();
 }
 function closeLightbox() {
   document.getElementById('lightbox').style.display = 'none';
@@ -2682,9 +2718,7 @@ function startEdit(no) {
   state.editOrig = no;
   state.assetCat = a.cat;
   state.assetDept = a.dept && a.dept !== '兩部門' ? a.dept : (a.cat === '教玩具' && /^T/.test(a.no) ? '托嬰部' : a.cat === '教玩具' && /^K/.test(a.no) ? '幼兒部' : '');
-  state.assetPhoto = '';
-  state.removePhoto = false;
-  state.editPhotoId = String(a.photo || '').trim();
+  state.asPhotos = splitPhotoIds(a.photo).map(function (id) { return { id: id }; });
   renderAssetForm();
   document.getElementById('as-no').value = a.no;
   document.getElementById('as-name').value = a.name;
@@ -2696,15 +2730,7 @@ function startEdit(no) {
   document.getElementById('as-keeper').value = a.keeper || '';
   document.getElementById('as-note').value = a.note || '';
   document.getElementById('as-status').value = a.status || '使用中';
-  var pv = document.getElementById('as-photo-preview');
-  if (state.editPhotoId) {
-    pv.src = 'https://drive.google.com/thumbnail?id=' + state.editPhotoId + '&sz=w800';
-    pv.style.display = 'block';
-    document.getElementById('as-photo-clear').style.display = 'block';
-  } else {
-    pv.src = ''; pv.style.display = 'none';
-    document.getElementById('as-photo-clear').style.display = 'none';
-  }
+  renderAssetPhotos();
   document.getElementById('asset-edit-banner').style.display = 'block';
   document.getElementById('aeb-no').textContent = no;
   document.getElementById('as-status-field').style.display = 'block';
@@ -2717,18 +2743,12 @@ function startEdit(no) {
 
 function cancelEdit() {
   state.editOrig = null;
-  state.editPhotoId = '';
-  state.removePhoto = false;
   ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-keeper', 'as-note'].forEach(function (id) {
     document.getElementById(id).value = '';
   });
   document.getElementById('as-qty').value = 1;
   document.getElementById('as-status').value = '使用中';
-  state.assetPhoto = '';
-  document.getElementById('as-photo').value = '';
-  var pv = document.getElementById('as-photo-preview');
-  pv.src = ''; pv.style.display = 'none';
-  document.getElementById('as-photo-clear').style.display = 'none';
+  clearAssetPhoto();
   document.getElementById('asset-edit-banner').style.display = 'none';
   document.getElementById('as-status-field').style.display = 'none';
   document.getElementById('as-delete-btn').style.display = 'none';
@@ -2957,13 +2977,14 @@ async function submitAsset() {
     life: document.getElementById('as-life').value,
     keeper: document.getElementById('as-keeper').value.trim(),
     note: document.getElementById('as-note').value.trim(),
-    photo: state.assetPhoto
+    photos: state.asPhotos.filter(function (p) { return p.b64; }).map(function (p) { return p.b64; })
   };
+  if (!state.editOrig && payload.photos.length) payload.photo = payload.photos[0]; // 相容舊後端（只收一張）
   if (state.assetCat === '教玩具') payload.dept = state.assetDept; // v4.12
   if (state.editOrig) {
     payload.origNo = state.editOrig;
     payload.status = document.getElementById('as-status').value;
-    payload.removePhoto = state.removePhoto;
+    payload.keepPhotos = state.asPhotos.filter(function (p) { return p.id; }).map(function (p) { return p.id; });
   }
   busy(true);
   try {
@@ -2976,7 +2997,7 @@ async function submitAsset() {
       state.assets = null;
       switchAssetTab('list');
     } else {
-      toast('✅ 已登記 ' + res.no + '・' + name + (res.hasPhoto ? '（含照片）' : '') + (res.total !== '' && res.total != null ? '・總價 NT$' + Number(res.total).toLocaleString() : ''));
+      toast('✅ 已登記 ' + res.no + '・' + name + (res.hasPhoto ? '（含照片 ' + (res.photoCount || 1) + ' 張）' : '') + (res.total !== '' && res.total != null ? '・總價 NT$' + Number(res.total).toLocaleString() : ''));
       clearAssetPhoto();
       ['as-no', 'as-name', 'as-brand', 'as-unit', 'as-life', 'as-note'].forEach(function (id) {
         document.getElementById(id).value = '';
@@ -3069,8 +3090,10 @@ function renderAssetList() {
     if (a.total !== '') meta.push('NT$ ' + a.total);
     if (a.date) meta.push(a.date);
     if (a.brand) meta.push(a.brand);
-    var thumb = a.photo
-      ? '<img class="asset-thumb" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(a.photo) + '&sz=w120" alt="" onclick="openLightbox(event,\'' + esc(a.photo) + '\')">'
+    var pids = splitPhotoIds(a.photo);
+    var thumb = pids.length
+      ? '<span class="thumb-wrap"><img class="asset-thumb" loading="lazy" src="https://drive.google.com/thumbnail?id=' + esc(pids[0]) + '&sz=w120" alt="" onclick="openLightbox(event,\'' + esc(pids.join(',')) + '\')">'
+        + (pids.length > 1 ? '<span class="n">' + pids.length + '</span>' : '') + '</span>'
       : '<div class="asset-thumb ph">📷</div>';
     row.innerHTML = thumb +
       '<div class="asset-main">' +
