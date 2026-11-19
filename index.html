@@ -1037,11 +1037,15 @@ body.manage-mode .manage-box{display:block}
     <div class="field">
       <div class="chips" id="asset-filter-chips"></div>
     </div>
-    <div class="field-row" style="align-items:flex-end;margin-bottom:10px">
-      <div class="field" style="margin:0"><label>匯出部門<span class="hint">每個類別一個分頁</span></label>
-        <select id="as-xp-dept"><option value="">全部</option><option value="托嬰部">托嬰部</option><option value="幼兒部">幼兒部</option></select></div>
-      <button type="button" class="secondary-btn" style="margin:0" onclick="exportAssets()">⬇️ 匯出財產清冊 Excel</button>
+    <div class="field" style="margin:4px 0 8px">
+      <label>匯出部門<span class="hint">每個類別一個分頁</span></label>
+      <div class="chips" id="as-xp-dept-chips">
+        <button type="button" class="chip active" data-dept="" onclick="setAssetXpDept(this)">全部</button>
+        <button type="button" class="chip" data-dept="托嬰部" onclick="setAssetXpDept(this)">托嬰部</button>
+        <button type="button" class="chip" data-dept="幼兒部" onclick="setAssetXpDept(this)">幼兒部</button>
+      </div>
     </div>
+    <button type="button" class="secondary-btn" style="margin:0 0 10px" onclick="exportAssets()">⬇️ 匯出財產清冊 Excel</button>
     <div class="asset-summary" id="as-summary">載入中…</div>
     <div id="as-rows"></div>
     <button class="secondary-btn" onclick="fetchAssets(true)">🔄 重新整理</button>
@@ -1468,6 +1472,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.16：財產清冊「匯出部門」改為膠囊按鈕（全部／托嬰部／幼兒部），匯出按鈕獨立一列
  * v4.15：財產清冊匯出每個類別一個分頁＋總覽，可選匯出托嬰部／幼兒部；圖書以外新增／編輯可選部門
  * v4.14：編輯時移除已存照片先確認；儲存後原檔移到雲端硬碟垃圾桶（後端 Assets.gs v2.6）
  * v4.13：財產照片可多張（最多 6 張，一次多選／拖放、編輯時個別移除；清冊縮圖標張數、燈箱點照片換下一張；後端 Assets.gs v2.5）
@@ -2053,8 +2058,14 @@ function assetDeptOf(a) {
   if (/^K/i.test(a.no || '')) return '幼兒部';
   return '托嬰部';
 }
+/* v4.16：匯出部門改膠囊按鈕 */
+state.asXpDept = '';
+function setAssetXpDept(btn) {
+  state.asXpDept = btn.getAttribute('data-dept') || '';
+  Array.prototype.forEach.call(document.querySelectorAll('#as-xp-dept-chips .chip'), function (b) { b.classList.toggle('active', b === btn); });
+}
 async function exportAssets() {
-  var dept = (document.getElementById('as-xp-dept') || {}).value || '';
+  var dept = state.asXpDept || '';
   busy(true);
   try {
     await loadSheetJs();
