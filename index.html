@@ -341,6 +341,23 @@ body.manage-mode .manage-box{display:block}
 .c-sample .bar{background:var(--bar-toy)} .c-sample .emoji{background:var(--tint-cream)}
 .c-light .bar{background:var(--bar-fridge)} .c-light .emoji{background:var(--tint-lavender)}
 .c-pest .bar{background:var(--bar-clean)} .c-pest .emoji{background:var(--tint-mint)}
+.c-visitor .bar{background:var(--accent)} .c-visitor .emoji{background:var(--accent-soft)}
+.policy{background:#FFFBF2;border:1px solid var(--line);border-radius:14px;padding:16px 16px 12px;margin-bottom:16px}
+.policy h4{font-family:var(--font-title);font-size:16px;text-align:center;letter-spacing:.2em;margin-bottom:10px}
+.policy p{font-size:13.5px;line-height:1.75;margin-bottom:8px}
+.policy ul{list-style:none;padding:0;margin:0 0 8px}
+.policy li{position:relative;padding-left:24px;font-size:13.5px;line-height:1.7;margin-bottom:6px}
+.policy li::before{content:'★';position:absolute;left:2px;top:0;color:#E0A526}
+.policy li b{color:var(--accent)}
+.policy .sign{text-align:right;font-size:13px;color:var(--ink-soft)}
+.policy-toggle{display:block;width:100%;background:none;border:none;color:var(--accent);font-size:13px;padding:4px 0 0;cursor:pointer}
+.vs-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.vs-row:last-child{border-bottom:none}
+.vs-row .who{flex:1;min-width:0;font-size:14px;line-height:1.5}
+.vs-row .who small{display:block;color:var(--ink-soft);font-size:12px}
+.vs-row select{width:96px;padding:8px 6px;font-size:14px}
+.vs-row .row-btn{white-space:nowrap}
+.reason-chips{margin-top:8px}
 .c-infect .bar{background:var(--bar-asset)} .c-infect .emoji{background:var(--tint-peach)}
 .c-finance .bar{background:var(--ink)} .c-finance .emoji{background:var(--tint-cream)}
 .c-meet .bar{background:var(--bar-clean)} .c-meet .emoji{background:var(--tint-mint)}
@@ -697,6 +714,19 @@ body.manage-mode .manage-box{display:block}
   <div class="section-head mt">
     <div><span class="num">04</span><span class="label">OTHER 其他</span></div>
     <span class="note">as needed</span>
+  </div>
+
+  <div class="card c-visitor" onclick="openVisitor()">
+    <div class="bar"></div>
+    <div class="inner">
+      <div class="emoji">🚪</div>
+      <div>
+        <h3>訪客出入實名制登記</h3>
+        <div class="en-name">Visitor Sign-in Log</div>
+        <p>日期・進入／離開時間・姓名・來訪事由<br>同頁附門禁管理辦法</p>
+      </div>
+      <div class="arrow">→</div>
+    </div>
   </div>
 
   <div class="card c-toy" onclick="openForm('toy')">
@@ -1248,6 +1278,57 @@ body.manage-mode .manage-box{display:block}
   <div class="panel" id="pest-recent" style="display:none"></div>
 </div>
 
+<!-- ===== 訪客出入實名制登記（v4.17） ===== -->
+<div class="form-view" id="view-visitor">
+  <div class="back-bar">
+    <button class="back-btn" onclick="goHome()">‹ 返回</button>
+    <span class="form-title">訪客出入實名制登記表<span class="en-name">Visitor Sign-in Log</span></span>
+  </div>
+  <div class="policy" id="vs-policy">
+    <h4>門禁管理辦法</h4>
+    <p>為維護本中心嬰幼兒、員工、設施及財產之安全，特訂本中心門禁管理要點，請詳閱後務必遵守。</p>
+    <p style="font-weight:700;margin-bottom:6px">訪客注意事項：</p>
+    <ul>
+      <li>為維護嬰幼兒健康及孩子的年齡特性，以不影響嬰幼兒作息、情緒等情況，<b>只接受電話預約參觀</b>。</li>
+      <li>若訪客有急性呼吸道感染、發燒、腸胃炎、傳染性疾病或是自覺身體不適、咳嗽者請改期參觀。</li>
+      <li>探訪前請務必<b>測量體溫</b>及確實使用<b>酒精手部消毒</b>。</li>
+      <li>進入探訪時請務必<b>戴上口罩</b>，以保護嬰幼兒、工作人員及自己。</li>
+      <li>進入中心時請<b>換上室內拖鞋</b>。</li>
+      <li>中心出入實施體溫監測，以便掌控體溫異常部分，凡<b>體溫異常超過 37.8 度</b>者則拒入內參觀。</li>
+      <li>遇國內外重大疫情時，得依衛生單位公告之探訪原則及規範嚴格實施探訪管理。</li>
+      <li><b>謝絕未預約人員進入中心。</b></li>
+    </ul>
+    <div class="sign">星安托嬰中心　敬啟</div>
+  </div>
+  <div class="panel" id="vs-pending-panel" style="display:none">
+    <div class="field" style="margin-bottom:4px"><label>⏳ 尚未登記離開<span class="hint">近 3 天；選時間後按「離開」即可補登，任何老師都能補</span></label></div>
+    <div id="vs-pending"></div>
+  </div>
+  <div class="panel">
+    <div class="rot-by">登記人：<b id="vs-by-name"></b>（依您的 LINE 帳號自動帶入）</div>
+    <div class="field-row">
+      <div class="field"><label>日期</label><select id="vs-date"></select></div>
+      <div class="field"><label>部門</label><div class="chips" id="vs-dept-chips"></div></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>進入時間</label><select id="vs-in"></select></div>
+      <div class="field"><label>離開時間</label><select id="vs-out"></select></div>
+    </div>
+    <div class="field">
+      <label>姓名<span class="hint">實名登記，多人同行請分別登記</span></label>
+      <input type="text" id="vs-name" maxlength="60" placeholder="例如：王小明" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>來訪事由</label>
+      <textarea id="vs-reason" maxlength="500" placeholder="例如：預約參觀（10:00 電話預約）"></textarea>
+      <div class="chips reason-chips" id="vs-reason-chips"></div>
+    </div>
+    <button class="submit-btn" onclick="submitVisitor()">送出登記</button>
+    <button class="secondary-btn" onclick="loadRecent('visitor')">📋 查看近期紀錄</button>
+  </div>
+  <div class="panel" id="visitor-recent" style="display:none"></div>
+</div>
+
 <!-- ===== 急救箱耗材檢核（每月） ===== -->
 <div class="form-view" id="view-firstaid">
   <div class="back-bar">
@@ -1472,6 +1553,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.17：新增「訪客出入實名制登記表」（日期／進入／離開時間下拉、姓名、來訪事由；同頁附門禁管理辦法；尚未離開清單可一鍵補登；後端 Visitor.gs v1.0）
  * v4.16：財產清冊「匯出部門」改為膠囊按鈕（全部／托嬰部／幼兒部），匯出按鈕獨立一列
  * v4.15：財產清冊匯出每個類別一個分頁＋總覽，可選匯出托嬰部／幼兒部；圖書以外新增／編輯可選部門
  * v4.14：編輯時移除已存照片先確認；儲存後原檔移到雲端硬碟垃圾桶（後端 Assets.gs v2.6）
@@ -1784,7 +1866,7 @@ var EXPORT_FORMS = [
   { form: 'pest', title: '病媒防制與衛生檢核' }, { form: 'cctv', title: '監視器與影像管理' },
   { form: 'infection', title: '衛生保健與感控月檢' }, { form: 'firstaid', title: '急救箱耗材檢核' },
   { form: 'rotation', title: '教玩具輪替' }, { form: 'books', title: '圖書管理總表' }, { form: 'finance', title: '收退費對帳', manager: true },
-  { form: 'toy', title: '教玩具檢修' }
+  { form: 'toy', title: '教玩具檢修' }, { form: 'visitor', title: '訪客出入登記' }
 ];
 function xpTitle(form) { var f = EXPORT_FORMS.filter(function (x) { return x.form === form; })[0]; return f ? f.title : form; }
 function xpDeptOpts() {
@@ -3402,6 +3484,130 @@ function clearPhoto(key) {
 function afterSubmit() { state.compDirty = true; }
 
 /* ============================================================
+ * v4.17：訪客出入實名制登記（後端 Visitor.gs：action=visitor）
+ *   日期＝今天往前 7 天下拉；進入／離開時間＝每 5 分鐘下拉；離開可先空白，之後在「尚未登記離開」補
+ * ============================================================ */
+var VS_REASONS = ['預約參觀', '家長會談', '廠商送貨', '設備維修', '公部門訪視', '面試'];
+var VS_SLOT = 5;
+function vsPad(n) { return ('0' + n).slice(-2); }
+function vsTimeOpts(step) {
+  var out = [];
+  for (var m = 6 * 60; m <= 21 * 60 + 55; m += (step || VS_SLOT)) out.push(vsPad(Math.floor(m / 60)) + ':' + vsPad(m % 60));
+  return out;
+}
+function vsNowHm() {
+  var p = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()).split(':');
+  var h = +p[0] % 24, m = Math.floor(+p[1] / VS_SLOT) * VS_SLOT;
+  return vsPad(h) + ':' + vsPad(m);
+}
+function vsYmd(offset) { // 台北時區 yyyy-MM-dd
+  var d = new Date(Date.now() - (offset || 0) * 86400000);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+}
+function vsFillTimes(sel, first, val) {
+  var opts = vsTimeOpts();
+  if (val && opts.indexOf(val) === -1) { opts.push(val); opts.sort(); }
+  sel.innerHTML = (first ? '<option value="">' + first + '</option>' : '') + opts.map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('');
+  sel.value = val || '';
+}
+function openVisitor() {
+  var wk = '日一二三四五六';
+  var ds = document.getElementById('vs-date');
+  ds.innerHTML = '';
+  for (var i = 0; i <= 7; i++) {
+    var ymd = vsYmd(i), p = ymd.split('-');
+    var dow = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay();
+    var op = document.createElement('option');
+    op.value = ymd;
+    op.textContent = (+p[1]) + '/' + (+p[2]) + '（' + wk[dow] + '）' + (i === 0 ? '今天' : i === 1 ? '昨天' : '');
+    ds.appendChild(op);
+  }
+  ds.value = vsYmd(0);
+  if (!state.vsDept) state.vsDept = state.pestDept || (state.depts[0] && state.depts[0].name) || '';
+  renderDeptChips('vs-dept-chips', 'vsDept');
+  vsFillTimes(document.getElementById('vs-in'), '', vsNowHm());
+  vsFillTimes(document.getElementById('vs-out'), '尚未離開（稍後補登）', '');
+  document.getElementById('vs-by-name').textContent = (state.user && state.user.name) || '';
+  var rc = document.getElementById('vs-reason-chips');
+  rc.innerHTML = '';
+  VS_REASONS.forEach(function (r) {
+    rc.appendChild(chipBtn(r, false, function (name) {
+      var t = document.getElementById('vs-reason');
+      t.value = t.value.trim() ? t.value.trim() + '；' + name : name;
+      t.focus();
+    }));
+  });
+  openForm('visitor');
+  loadVisitorPending();
+}
+async function submitVisitor() {
+  var name = document.getElementById('vs-name').value.trim();
+  var reason = document.getElementById('vs-reason').value.trim();
+  var tIn = document.getElementById('vs-in').value, tOut = document.getElementById('vs-out').value;
+  if (!state.vsDept) { toast('請選擇部門', true); return; }
+  if (!tIn) { toast('請選擇進入時間', true); return; }
+  if (tOut && tOut <= tIn) { toast('離開時間要晚於進入時間', true); return; }
+  if (!name) { toast('請填寫訪客姓名', true); return; }
+  if (!reason) { toast('請填寫來訪事由', true); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'visitor', op: 'submit', date: fromInputDate(document.getElementById('vs-date').value), dept: state.vsDept,
+      name: name, reason: reason, inTime: tIn, outTime: tOut });
+    busy(false);
+    if (!res.ok) {
+      toast(res.error === 'UNKNOWN_ACTION' ? '後端尚未更新（Visitor.gs），請先部署新版本' : (res.message || '送出失敗'), true);
+      return;
+    }
+    toast(res.pending ? '✅ 已登記進入，離開時請在上方「尚未登記離開」補登' : '✅ 訪客出入已登記');
+    afterSubmit();
+    document.getElementById('vs-name').value = '';
+    document.getElementById('vs-reason').value = '';
+    vsFillTimes(document.getElementById('vs-in'), '', vsNowHm());
+    vsFillTimes(document.getElementById('vs-out'), '尚未離開（稍後補登）', '');
+    loadVisitorPending();
+    if (document.getElementById('visitor-recent').style.display === 'block') loadRecent('visitor');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+async function loadVisitorPending() {
+  var panel = document.getElementById('vs-pending-panel');
+  try {
+    var res = await api({ action: 'visitor', op: 'pending' });
+    if (!res.ok) { panel.style.display = 'none'; return; }
+    state.vsPending = res.items || [];
+    renderVisitorPending();
+  } catch (e) { panel.style.display = 'none'; }
+}
+function renderVisitorPending() {
+  var items = state.vsPending || [], panel = document.getElementById('vs-pending-panel');
+  panel.style.display = items.length ? 'block' : 'none';
+  var now = vsNowHm(), today = vsYmd(0).replace(/-/g, '/');
+  document.getElementById('vs-pending').innerHTML = items.map(function (it, i) {
+    var dflt = it.date === today && now > it.inTime ? now : '';
+    var opts = vsTimeOpts().filter(function (t) { return t > it.inTime; });
+    return '<div class="vs-row"><div class="who"><b>' + esc(it.name) + '</b>　' + esc(it.inTime) + ' 進入'
+      + '<small>' + esc(it.date.slice(5)) + '・' + esc(it.dept) + '・' + esc(it.reason) + '（' + esc(it.by) + ' 登記）</small></div>'
+      + '<select id="vs-lv-' + i + '"><option value="">離開時間</option>' + opts.map(function (t) {
+        return '<option value="' + t + '"' + (t === dflt ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select>'
+      + '<button class="row-btn" onclick="visitorLeave(' + i + ')">離開</button></div>';
+  }).join('');
+}
+async function visitorLeave(i) {
+  var it = (state.vsPending || [])[i];
+  if (!it) return;
+  var t = document.getElementById('vs-lv-' + i).value;
+  if (!t) { toast('請選擇離開時間', true); return; }
+  busy(true);
+  try {
+    var res = await api({ action: 'visitor', op: 'leave', row: it.row, stamp: it.stamp, outTime: t });
+    busy(false);
+    if (!res.ok) { toast(res.message || '補登失敗', true); if (res.error === 'STALE' || res.error === 'ALREADY') loadVisitorPending(); return; }
+    toast('✅ ' + it.name + ' 已登記 ' + t + ' 離開');
+    loadVisitorPending();
+    if (document.getElementById('visitor-recent').style.display === 'block') loadRecent('visitor');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+
+/* ============================================================
  * 首頁狀態（托嬰部）
  * ============================================================ */
 async function loadCompliance() {
@@ -4461,7 +4667,7 @@ var RECENT_BOX = {
   fridge: 'fridge-recent', cleaning: 'cleaning-recent', toy: 'toy-recent', cctv: 'cctv-recent',
   cctvWeekly: 'cctvw-recent', sample: 'sample-recent', light: 'light-recent', pest: 'pest-recent',
   infection: 'infection-recent', finance: 'finance-recent', rotation: 'rotation-recent', firstaid: 'firstaid-recent',
-  books: 'books-recent'
+  books: 'books-recent', visitor: 'visitor-recent'
 };
 state.recent = {};
 state.edit = null;
@@ -4572,7 +4778,13 @@ function openEdit(form, row) {
     if (!Object.prototype.hasOwnProperty.call(cur, f.h)) return;
     var v = String(cur[f.h] == null ? '' : cur[f.h]);
     var id = 'em-f' + idx, el;
-    if (f.type === 'select') {
+    if (f.type === 'time' && f.slot) { // v4.17：時間下拉（每 slot 分鐘）
+      el = document.createElement('select');
+      var tv = toInputTime(v), tops = [''].concat(vsTimeOpts(f.slot));
+      if (tv && tops.indexOf(tv) === -1) tops.push(tv);
+      tops.forEach(function (o) { var op = document.createElement('option'); op.value = o; op.textContent = o === '' ? '（空白）' : o; el.appendChild(op); });
+      el.value = tv;
+    } else if (f.type === 'select') {
       el = document.createElement('select');
       var opts = (f.opts || []).slice();
       if (opts.indexOf(v) === -1) opts.unshift(v); // 舊資料值保留可選
