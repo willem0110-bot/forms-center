@@ -358,6 +358,21 @@ body.manage-mode .manage-box{display:block}
 .vs-row select{width:96px;padding:8px 6px;font-size:14px}
 .vs-row .row-btn{white-space:nowrap}
 .reason-chips{margin-top:8px}
+.qr-box{text-align:center;padding:6px 0 2px}
+.qr-box img{width:220px;height:220px;image-rendering:pixelated;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff}
+.qr-url{font-size:11.5px;color:var(--ink-soft);word-break:break-all;margin:8px 0}
+.qr-acts{display:flex;gap:8px;flex-wrap:wrap}
+.qr-acts button{flex:1;min-width:120px;margin:0}
+#vs-print-sheet{display:none}
+@media print{
+  body.printing-qr > *{display:none !important}
+  body.printing-qr > #vs-print-sheet{display:block !important;text-align:center;padding-top:40px;font-family:'Noto Serif TC',serif;color:#2A2622}
+  #vs-print-sheet h1{font-size:34px;letter-spacing:.12em;margin-bottom:6px}
+  #vs-print-sheet .sub{font-size:18px;margin-bottom:24px}
+  #vs-print-sheet img{width:340px;height:340px;image-rendering:pixelated}
+  #vs-print-sheet ol{display:inline-block;text-align:left;font-size:17px;line-height:2;margin-top:20px}
+  #vs-print-sheet .ft{margin-top:24px;font-size:14px;color:#6B645C}
+}
 .c-infect .bar{background:var(--bar-asset)} .c-infect .emoji{background:var(--tint-peach)}
 .c-finance .bar{background:var(--ink)} .c-finance .emoji{background:var(--tint-cream)}
 .c-meet .bar{background:var(--bar-clean)} .c-meet .emoji{background:var(--tint-mint)}
@@ -1319,6 +1334,10 @@ body.manage-mode .manage-box{display:block}
       <input type="text" id="vs-name" maxlength="60" placeholder="例如：王小明" autocomplete="off">
     </div>
     <div class="field">
+      <label>手機號碼<span class="hint">選填；訪客自行掃碼登記時為必填</span></label>
+      <input type="tel" id="vs-phone" maxlength="13" inputmode="tel" placeholder="0912345678" autocomplete="off">
+    </div>
+    <div class="field">
       <label>來訪事由</label>
       <textarea id="vs-reason" maxlength="500" placeholder="例如：預約參觀（10:00 電話預約）"></textarea>
       <div class="chips reason-chips" id="vs-reason-chips"></div>
@@ -1327,7 +1346,18 @@ body.manage-mode .manage-box{display:block}
     <button class="secondary-btn" onclick="loadRecent('visitor')">📋 查看近期紀錄</button>
   </div>
   <div class="panel" id="visitor-recent" style="display:none"></div>
+  <div class="panel" id="vs-qr-panel" style="display:none">
+    <div class="field" style="margin-bottom:8px"><label>📱 門口 QR code<span class="hint">訪客掃碼免登入自行登記；限園長／主任管理</span></label></div>
+    <div class="chips" id="vs-qr-dept" style="margin-bottom:10px"></div>
+    <div class="qr-box"><img id="vs-qr-img" alt="訪客登記 QR code"><div class="qr-url" id="vs-qr-url"></div></div>
+    <div class="qr-acts">
+      <button class="secondary-btn" onclick="printVisitorQr()">🖨 列印門口海報</button>
+      <button class="secondary-btn" onclick="copyVisitorQr()">🔗 複製連結</button>
+      <button class="secondary-btn" onclick="rotateVisitorQr()">♻️ 換新 QR（舊的失效）</button>
+    </div>
+  </div>
 </div>
+<div id="vs-print-sheet"></div>
 
 <!-- ===== 急救箱耗材檢核（每月） ===== -->
 <div class="form-view" id="view-firstaid">
@@ -1553,6 +1583,7 @@ body.manage-mode .manage-box{display:block}
  * v3.1：教玩具輪替紀錄（每班每月；財產清冊挑選＋自製教具、更換前後照片）
  * v3.2：急救箱 15 項耗材檢核（每月；原在合規台表單，改由表格中心填寫、合規台讀取 FirstAid_Check）
  * v3.4：消毒水濃度改為 漂白水 1000／5000ppm、次氯酸水 中濃度 100ppm
+ * v4.18：訪客掃門口 QR code 免登入自行登記（公開頁 /visitor/）；園長／主任可產生、列印、換新各部門 QR；老師端加手機欄（選填）；後端 Visitor.gs v1.1
  * v4.17：新增「訪客出入實名制登記表」（日期／進入／離開時間下拉、姓名、來訪事由；同頁附門禁管理辦法；尚未離開清單可一鍵補登；後端 Visitor.gs v1.0）
  * v4.16：財產清冊「匯出部門」改為膠囊按鈕（全部／托嬰部／幼兒部），匯出按鈕獨立一列
  * v4.15：財產清冊匯出每個類別一個分頁＋總覽，可選匯出托嬰部／幼兒部；圖書以外新增／編輯可選部門
@@ -3539,6 +3570,75 @@ function openVisitor() {
   });
   openForm('visitor');
   loadVisitorPending();
+  loadVisitorQr();
+}
+
+/* v4.18：門口 QR code（園長／主任） */
+var VS_PUBLIC = location.origin + location.pathname.replace(/[^\/]*$/, '') + 'visitor/';
+var VS_QR_LIB = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+function loadQrLib() {
+  if (window.qrcode) return Promise.resolve();
+  return new Promise(function (ok, no) {
+    var sc = document.createElement('script'); sc.src = VS_QR_LIB; sc.onload = ok; sc.onerror = function () { no(new Error('QR 元件載入失敗')); };
+    document.head.appendChild(sc);
+  });
+}
+async function loadVisitorQr() {
+  var panel = document.getElementById('vs-qr-panel');
+  if (!state.user || !state.user.canManageClass) { panel.style.display = 'none'; return; }
+  try {
+    var res = await api({ action: 'visitor', op: 'qrKeys' });
+    if (!res.ok) { panel.style.display = 'none'; return; }
+    state.vsKeys = res.keys || {};
+    if (!state.vsQrDept || !state.vsKeys[state.vsQrDept]) state.vsQrDept = state.vsDept || Object.keys(state.vsKeys)[0];
+    panel.style.display = 'block';
+    renderVisitorQr();
+  } catch (e) { panel.style.display = 'none'; }
+}
+function vsQrUrl() { return VS_PUBLIC + '?k=' + encodeURIComponent(state.vsKeys[state.vsQrDept] || ''); }
+function vsQrData(cell) {
+  var q = qrcode(0, 'M'); q.addData(vsQrUrl()); q.make();
+  return q.createDataURL(cell || 8, 2);
+}
+async function renderVisitorQr() {
+  var wrap = document.getElementById('vs-qr-dept');
+  wrap.innerHTML = '';
+  state.depts.forEach(function (d) {
+    if (!state.vsKeys[d.name]) return;
+    wrap.appendChild(chipBtn(d.name, state.vsQrDept === d.name, function (name) { state.vsQrDept = name; renderVisitorQr(); }));
+  });
+  document.getElementById('vs-qr-url').textContent = vsQrUrl();
+  try { await loadQrLib(); document.getElementById('vs-qr-img').src = vsQrData(8); }
+  catch (e) { toast(e.message, true); }
+}
+async function rotateVisitorQr() {
+  if (!confirm('確定換新「' + state.vsQrDept + '」的 QR code？\n舊的 QR 會立刻失效，門口海報需要重新列印。')) return;
+  busy(true);
+  try {
+    var res = await api({ action: 'visitor', op: 'qrRotate', dept: state.vsQrDept });
+    busy(false);
+    if (!res.ok) { toast(res.message || '換新失敗', true); return; }
+    state.vsKeys = res.keys; renderVisitorQr();
+    toast('✅ 已換新，請重新列印門口海報');
+  } catch (e) { busy(false); toast('連線失敗，請再試一次', true); }
+}
+function copyVisitorQr() {
+  var u = vsQrUrl();
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(u).then(function () { toast('✅ 已複製連結'); }, function () { prompt('複製這個連結', u); });
+  else prompt('複製這個連結', u);
+}
+async function printVisitorQr() {
+  try { await loadQrLib(); } catch (e) { toast(e.message, true); return; }
+  var dept = state.vsQrDept, place = dept === '托嬰部' ? '星安托嬰中心' : '星安幼兒園';
+  var sheet = document.getElementById('vs-print-sheet');
+  sheet.innerHTML = '<h1>訪客出入登記</h1><div class="sub">' + esc(place) + '｜請用手機相機或 LINE 掃描</div>'
+    + '<img src="' + vsQrData(12) + '" alt="QR">'
+    + '<br><ol><li>進入前掃碼，填寫姓名、手機、來訪事由</li><li>出示完成畫面給老師</li><li>離開時再掃一次，按「登記離開」</li></ol>'
+    + '<div class="ft">感謝配合門禁管理辦法・謝絕未預約人員進入</div>';
+  document.body.classList.add('printing-qr');
+  var done = function () { document.body.classList.remove('printing-qr'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  setTimeout(function () { window.print(); }, 300); // 畫面樣式不受 printing-qr 影響（只在 @media print 生效），afterprint 再移除
 }
 async function submitVisitor() {
   var name = document.getElementById('vs-name').value.trim();
@@ -3552,7 +3652,7 @@ async function submitVisitor() {
   busy(true);
   try {
     var res = await api({ action: 'visitor', op: 'submit', date: fromInputDate(document.getElementById('vs-date').value), dept: state.vsDept,
-      name: name, reason: reason, inTime: tIn, outTime: tOut });
+      name: name, phone: document.getElementById('vs-phone').value.trim(), reason: reason, inTime: tIn, outTime: tOut });
     busy(false);
     if (!res.ok) {
       toast(res.error === 'UNKNOWN_ACTION' ? '後端尚未更新（Visitor.gs），請先部署新版本' : (res.message || '送出失敗'), true);
@@ -3561,6 +3661,7 @@ async function submitVisitor() {
     toast(res.pending ? '✅ 已登記進入，離開時請在上方「尚未登記離開」補登' : '✅ 訪客出入已登記');
     afterSubmit();
     document.getElementById('vs-name').value = '';
+    document.getElementById('vs-phone').value = '';
     document.getElementById('vs-reason').value = '';
     vsFillTimes(document.getElementById('vs-in'), '', vsNowHm());
     vsFillTimes(document.getElementById('vs-out'), '尚未離開（稍後補登）', '');

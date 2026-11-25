@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex,nofollow">
+<title>星安｜訪客出入登記</title>
+<!-- visitor-public v1.0 | 2026-11-25 | 訪客掃門口 QR 免登入登記（後端 Visitor.gs v1.1：action=visitorPublic） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&family=Cormorant+Garamond:ital,wght@1,500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F3EA;--card:#FFFFFF;--ink:#2A2622;--ink-soft:#6B645C;--line:#E8E1D3;--accent:#B84A2F;--accent-soft:#FBE0DE;--ok:#5E7A52;--ok-soft:#E8F1E5;
+  --font-title:'Noto Serif TC',serif;--font-body:'Noto Sans TC',sans-serif;--font-en:'Cormorant Garamond',serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;-webkit-text-size-adjust:100%}
+.wrap{max-width:520px;margin:0 auto;padding:24px 18px 56px}
+.brand{text-align:center;margin-bottom:18px}
+.brand .en{font-family:var(--font-en);font-style:italic;color:var(--ink-soft);font-size:15px}
+.brand h1{font-family:var(--font-title);font-size:23px;letter-spacing:.08em;margin-top:2px}
+.brand .dept{display:inline-block;margin-top:8px;padding:3px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:700}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(42,38,34,.06)}
+.policy{background:#FFFBF2}
+.policy h2{font-family:var(--font-title);font-size:17px;text-align:center;letter-spacing:.2em;margin-bottom:10px}
+.policy p{font-size:14px;line-height:1.75;margin-bottom:8px}
+.policy ul{list-style:none;margin-bottom:8px}
+.policy li{position:relative;padding-left:24px;font-size:14px;line-height:1.7;margin-bottom:6px}
+.policy li::before{content:'★';position:absolute;left:2px;color:#E0A526}
+.policy li b{color:var(--accent)}
+.policy .sign{text-align:right;font-size:13px;color:var(--ink-soft)}
+.field{margin-bottom:16px}
+label.lb{display:block;font-weight:700;font-size:14px;margin-bottom:6px}
+label.lb .hint{font-weight:400;color:var(--ink-soft);font-size:12px;margin-left:6px}
+input[type=text],input[type=tel],textarea{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:16px;font-family:inherit;background:#fff;color:var(--ink)}
+input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{min-height:76px;resize:vertical}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;font-size:14px;color:var(--ink);cursor:pointer;font-family:inherit}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.agree{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:12px;background:#FFFBF2;border:1px solid var(--line);font-size:14px;line-height:1.6;cursor:pointer}
+.agree input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex-shrink:0}
+.privacy{font-size:12px;color:var(--ink-soft);line-height:1.6;margin-top:10px}
+.btn{display:block;width:100%;padding:15px;border:none;border-radius:999px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;font-family:inherit;cursor:pointer;margin-top:8px}
+.btn:disabled{opacity:.5}
+.btn.ghost{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+.btn.out{background:var(--ink)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.visit{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.visit .nm{font-family:var(--font-title);font-size:18px;font-weight:700}
+.visit .tm{color:var(--ink-soft);font-size:14px;margin:4px 0 6px}
+.visit.done{background:var(--ok-soft);border-color:#CFE0C8}
+.visit.done .tm b{color:var(--ok)}
+.big-ok{text-align:center;padding:8px 0 4px}
+.big-ok .ic{font-size:44px}
+.big-ok h3{font-family:var(--font-title);font-size:20px;margin:6px 0 4px}
+.big-ok p{color:var(--ink-soft);font-size:14px;line-height:1.6}
+.err{text-align:center;padding:30px 10px;color:var(--ink-soft);line-height:1.8}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:88%;text-align:center;z-index:9}
+#toast.show{opacity:1}#toast.warn{background:var(--accent)}
+.foot{text-align:center;font-family:var(--font-en);font-style:italic;color:var(--ink-soft);font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="en">Visitor Sign-in</div>
+    <h1>訪客出入實名制登記</h1>
+    <span class="dept" id="dept-tag" style="display:none"></span>
+  </div>
+
+  <div id="loading" class="panel err">載入中…</div>
+  <div id="bad" class="panel err" style="display:none"></div>
+
+  <div id="main" style="display:none">
+    <div class="panel" id="mine" style="display:none">
+      <div id="mine-list"></div>
+      <button class="btn ghost" id="add-btn" onclick="showForm(true)">＋ 登記另一位訪客</button>
+    </div>
+
+    <div id="form-wrap">
+      <div class="panel policy">
+        <h2>門禁管理辦法</h2>
+        <p>為維護本中心嬰幼兒、員工、設施及財產之安全，特訂本中心門禁管理要點，請詳閱後務必遵守。</p>
+        <p style="font-weight:700;margin-bottom:6px">訪客注意事項：</p>
+        <ul>
+          <li>為維護嬰幼兒健康及孩子的年齡特性，以不影響嬰幼兒作息、情緒等情況，<b>只接受電話預約參觀</b>。</li>
+          <li>若訪客有急性呼吸道感染、發燒、腸胃炎、傳染性疾病或是自覺身體不適、咳嗽者請改期參觀。</li>
+          <li>探訪前請務必<b>測量體溫</b>及確實使用<b>酒精手部消毒</b>。</li>
+          <li>進入探訪時請務必<b>戴上口罩</b>，以保護嬰幼兒、工作人員及自己。</li>
+          <li>進入中心時請<b>換上室內拖鞋</b>。</li>
+          <li>中心出入實施體溫監測，以便掌控體溫異常部分，凡<b>體溫異常超過 37.8 度</b>者則拒入內參觀。</li>
+          <li>遇國內外重大疫情時，得依衛生單位公告之探訪原則及規範嚴格實施探訪管理。</li>
+          <li><b>謝絕未預約人員進入中心。</b></li>
+        </ul>
+        <div class="sign" id="sign">星安托嬰中心　敬啟</div>
+      </div>
+
+      <div class="panel">
+        <div class="field">
+          <label class="lb" for="f-name">姓名<span class="hint">請填真實姓名，多人同行請每人各登記一次</span></label>
+          <input type="text" id="f-name" maxlength="30" autocomplete="name" placeholder="例如：王小明">
+        </div>
+        <div class="field">
+          <label class="lb" for="f-phone">手機號碼</label>
+          <input type="tel" id="f-phone" maxlength="13" inputmode="tel" autocomplete="tel" placeholder="0912345678">
+        </div>
+        <div class="field">
+          <label class="lb" for="f-reason">來訪事由</label>
+          <textarea id="f-reason" maxlength="200" placeholder="例如：預約參觀"></textarea>
+          <div class="chips" id="reason-chips"></div>
+        </div>
+        <input type="text" class="hp" id="f-hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <label class="agree"><input type="checkbox" id="f-agree"><span>我已詳閱並願意遵守上方<b>門禁管理辦法</b></span></label>
+        <p class="privacy">日期與進入時間由系統自動記錄。您的姓名與手機僅供本中心門禁安全管理及防疫聯繫使用，不作其他用途。</p>
+        <button class="btn" id="submit-btn" onclick="checkin()">送出登記</button>
+      </div>
+    </div>
+  </div>
+  <div class="foot">Star An · 星安教育</div>
+</div>
+<div id="toast"></div>
+
+<script>
+var API = 'https://script.google.com/macros/s/AKfycbzLvST9ap5Ovvyz8m30UJIJSFkZvYYSzQ5kAuOBwcAeT2XiYQFQ-OvetcnQMZqHNxTO7Q/exec';
+var REASONS = ['預約參觀', '家長會談', '廠商送貨', '設備維修', '公部門訪視', '面試'];
+var SIGN = { '托嬰部': '星安托嬰中心　敬啟', '幼兒部': '星安國際蒙特梭利藝術幼兒園　敬啟' };
+var K = (new URLSearchParams(location.search).get('k') || '').trim();
+var S = { dept: '', mine: [] };
+var STORE = 'xa_visitor_' + K;
+
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+var tt = null;
+function toast(m, warn) { var t = $('toast'); t.textContent = m; t.className = 'show' + (warn ? ' warn' : ''); clearTimeout(tt); tt = setTimeout(function () { t.className = ''; }, 3200); }
+function todayYmd() { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replace(/-/g, '/'); }
+async function api(p) {
+  p.action = 'visitorPublic'; p.k = K;
+  var r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(p) });
+  return r.json();
+}
+function loadMine() { try { var a = JSON.parse(localStorage.getItem(STORE) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+function saveMine(a) { try { localStorage.setItem(STORE, JSON.stringify(a)); } catch (e) {} }
+function fail(msg) { $('loading').style.display = 'none'; $('main').style.display = 'none'; var b = $('bad'); b.style.display = 'block'; b.innerHTML = msg; }
+
+async function boot() {
+  if (!/^[0-9a-f]{20}$/.test(K)) { fail('請使用門口張貼的 QR code 掃描進入<br>如有問題請洽櫃台老師'); return; }
+  var rc = $('reason-chips');
+  REASONS.forEach(function (r) {
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = r;
+    b.onclick = function () { var t = $('f-reason'); t.value = t.value.trim() ? t.value.trim() + '；' + r : r; };
+    rc.appendChild(b);
+  });
+  try {
+    var info = await api({ op: 'info' });
+    if (!info.ok) { fail(esc(info.message || '這個 QR code 已失效，請洽櫃台老師')); return; }
+    S.dept = info.dept;
+    $('dept-tag').textContent = '星安' + (info.dept === '托嬰部' ? '托嬰中心' : '幼兒園') + '・' + info.dept;
+    $('dept-tag').style.display = 'inline-block';
+    $('sign').textContent = SIGN[info.dept] || '星安教育　敬啟';
+  } catch (e) { fail('連線失敗，請確認網路後重新整理<br>或洽櫃台老師協助登記'); return; }
+
+  // 只保留今天的登記，向後端確認狀態
+  var today = todayYmd();
+  var mine = loadMine().filter(function (x) { return x && x.date === today && x.token; });
+  var checked = [];
+  for (var i = 0; i < mine.length; i++) {
+    try {
+      var st = await api({ op: 'status', token: mine[i].token });
+      if (st.ok && st.found) checked.push({ token: mine[i].token, date: st.date, name: st.name, inTime: st.inTime, outTime: st.outTime });
+    } catch (e) { checked.push(mine[i]); }
+  }
+  S.mine = checked; saveMine(checked);
+  $('loading').style.display = 'none';
+  $('main').style.display = 'block';
+  renderMine();
+  showForm(!checked.length);
+}
+
+function renderMine() {
+  var box = $('mine');
+  if (!S.mine.length) { box.style.display = 'none'; return; }
+  box.style.display = 'block';
+  $('mine-list').innerHTML = S.mine.map(function (x, i) {
+    if (x.outTime) {
+      return '<div class="visit done"><div class="nm">' + esc(x.name) + '</div><div class="tm">' + esc(x.inTime) + ' 進入・<b>' + esc(x.outTime) + ' 已離開</b></div><div style="font-size:13px;color:var(--ok)">謝謝您的配合，祝您有美好的一天 🌿</div></div>';
+    }
+    return '<div class="visit"><div class="nm">' + esc(x.name) + '</div><div class="tm">今天 ' + esc(x.inTime) + ' 已登記進入</div>'
+      + '<button class="btn out" onclick="checkout(' + i + ')">我要離開，登記離開時間</button></div>';
+  }).join('');
+}
+function showForm(on) {
+  $('form-wrap').style.display = on ? 'block' : 'none';
+  $('add-btn').style.display = on ? 'none' : 'block';
+  if (on && S.mine.length) $('f-name').focus();
+}
+
+async function checkin() {
+  var name = $('f-name').value.trim(), phone = $('f-phone').value.trim(), reason = $('f-reason').value.trim();
+  if (!name) { toast('請填寫姓名', true); return; }
+  if (!/^0\d{8,9}$/.test(phone.replace(/[\s\-()]/g, '').replace(/^\+?886/, '0'))) { toast('請填寫正確的手機號碼', true); return; }
+  if (!reason) { toast('請填寫來訪事由', true); return; }
+  if (!$('f-agree').checked) { toast('請勾選已詳閱並遵守門禁管理辦法', true); return; }
+  var btn = $('submit-btn'); btn.disabled = true; btn.textContent = '送出中…';
+  try {
+    var res = await api({ op: 'checkin', name: name, phone: phone, reason: reason, agree: true, hp: $('f-hp').value });
+    if (!res.ok) { toast(res.message || '送出失敗，請洽櫃台老師', true); return; }
+    S.mine.unshift({ token: res.token, date: res.date, name: res.name, inTime: res.inTime, outTime: '' });
+    saveMine(S.mine);
+    $('f-name').value = ''; $('f-phone').value = ''; $('f-reason').value = ''; $('f-agree').checked = false;
+    renderMine(); showForm(false);
+    window.scrollTo(0, 0);
+    toast('✅ 登記完成，請出示此畫面給老師');
+  } catch (e) { toast('連線失敗，請再試一次或洽櫃台老師', true); }
+  finally { btn.disabled = false; btn.textContent = '送出登記'; }
+}
+
+async function checkout(i) {
+  var x = S.mine[i];
+  if (!x) return;
+  if (!confirm(x.name + '，確定現在要離開嗎？')) return;
+  try {
+    var res = await api({ op: 'checkout', token: x.token });
+    if (!res.ok) { toast(res.message || '登記失敗，請洽櫃台老師', true); return; }
+    x.outTime = res.outTime; saveMine(S.mine); renderMine();
+    toast(res.already ? '已經登記過離開（' + res.outTime + '）' : '✅ 已登記 ' + res.outTime + ' 離開，謝謝您');
+  } catch (e) { toast('連線失敗，請再試一次', true); }
+}
+boot();
+</script>
+</body>
+</html>
